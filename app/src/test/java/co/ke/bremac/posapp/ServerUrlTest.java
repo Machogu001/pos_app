@@ -20,6 +20,11 @@ public class ServerUrlTest {
         assertEquals("https://pos.example.com/StoreFront", ServerUrl.normalize("POS.example.com/StoreFront"));
     }
 
+    @Test
+    public void stripsMobileApiSuffixWhenFullApiUrlIsPasted() throws Exception {
+        assertEquals("https://pos.example.com/StoreFront", ServerUrl.normalize("https://POS.example.com/StoreFront/api/mobile/v1/"));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsInsecureHttp() throws Exception {
         ServerUrl.normalize("http://pos.example.com");

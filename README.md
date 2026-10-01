@@ -26,6 +26,15 @@ Passport keys/tokens must be configured because the mobile endpoints require
 Bearer authentication after login. Cleartext HTTP is disabled in the Android
 manifest.
 
+## Server URL entry
+
+Enter the POS website base URL in the app, for example `https://example.com`
+or `https://example.com/retail` when the backend lives in a subdirectory.
+
+If a user pastes the full Mobile API URL such as
+`https://example.com/api/mobile/v1`, the app normalizes it back to the website
+base URL automatically.
+
 ## Build
 
 From PowerShell:
