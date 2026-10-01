@@ -54,19 +54,25 @@ public class PosApi {
         return client.request("GET", "/dashboard" + ApiClient.q(params), null, true);
     }
 
-    public JSONObject products(String query, String locationId, int page) throws Exception {
+    public JSONObject products(String query, String locationId, Integer contactId, int page) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("q", query);
         params.put("location_id", locationId);
+        if (contactId != null) {
+            params.put("contact_id", String.valueOf(contactId));
+        }
         params.put("page", String.valueOf(page));
         params.put("per_page", "20");
         return client.request("GET", "/products" + ApiClient.q(params), null, true);
     }
 
-    public JSONObject lookup(String code, String locationId) throws Exception {
+    public JSONObject lookup(String code, String locationId, Integer contactId) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("code", code);
         params.put("location_id", locationId);
+        if (contactId != null) {
+            params.put("contact_id", String.valueOf(contactId));
+        }
         return client.request("GET", "/products/lookup" + ApiClient.q(params), null, true);
     }
 

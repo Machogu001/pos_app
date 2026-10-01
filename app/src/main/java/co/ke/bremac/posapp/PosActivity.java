@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
+import co.ke.bremac.posapp.api.ApiException;
 import co.ke.bremac.posapp.cart.Cart;
 import co.ke.bremac.posapp.data.Customer;
 import co.ke.bremac.posapp.data.Json;
@@ -77,9 +78,14 @@ public class PosActivity extends BaseActivity {
         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
         spinner.setSelection(selected);
         spinner.setOnItemSelectedListener(new SimpleItemSelectedListener(position -> {
-            session.setLocationId(String.valueOf(session.locations.get(position).id));
+            String picked = String.valueOf(session.locations.get(position).id);
+            if (picked.equals(session.locationId)) {
+                return;
+            }
+            session.setLocationId(picked);
             loadPaymentMethods();
             render();
+            repriceCart();
         }));
         content.addView(spinner, Ui.params(this, -1, 48, 8));
     }
@@ -141,6 +147,7 @@ public class PosActivity extends BaseActivity {
         customer.setOnClickListener(view -> CustomerDialog.show(this, picked -> {
             session.selectedCustomer = picked;
             render();
+            repriceCart();
         }));
         content.addView(customer, Ui.params(this, -1, 48, 8));
     }
@@ -151,7 +158,7 @@ public class PosActivity extends BaseActivity {
             return;
         }
         runAsync("",
-                () -> session.api().products(query, session.locationId, productPage),
+                () -> session.api().products(query, session.locationId, pricingContactId(), productPage),
                 result -> {
                     JSONObject meta = result.optJSONObject("meta");
                     if (meta != null) {
@@ -173,8 +180,58 @@ public class PosActivity extends BaseActivity {
             return;
         }
         runAsync("Looking up product…",
-                () -> session.api().lookup(code, session.locationId),
+                () -> session.api().lookup(code, session.locationId, pricingContactId()),
                 result -> addProduct(Product.fromJson(result.optJSONObject("data"))));
+    }
+
+    private Integer pricingContactId() {
+        Customer customer = session.selectedCustomer;
+        return customer == null || customer.isDefault ? null : customer.id;
+    }
+
+    /**
+     * Prices depend on the customer (price group/markup) and location, so refresh
+     * every line the cashier has not manually overridden from the server.
+     */
+    private void repriceCart() {
+        List<Cart.Line> lines = new ArrayList<>();
+        for (Cart.Line line : session.cart.lines) {
+            if (!line.priceEdited && line.sku != null && !line.sku.isEmpty()) {
+                lines.add(line);
+            }
+        }
+        if (lines.isEmpty()) {
+            return;
+        }
+        String locationId = session.locationId;
+        Integer contactId = pricingContactId();
+        runAsync("Updating prices…", () -> {
+            JSONObject prices = new JSONObject();
+            for (Cart.Line line : lines) {
+                try {
+                    JSONObject data = session.api().lookup(line.sku, locationId, contactId).optJSONObject("data");
+                    if (data != null) {
+                        Product product = Product.fromJson(data);
+                        if (product.variationId == line.variationId) {
+                            prices.put(String.valueOf(line.variationId), product.priceIncTax);
+                        }
+                    }
+                } catch (ApiException exception) {
+                    if (exception.isUnauthenticated()) {
+                        throw exception;
+                    }
+                }
+            }
+            return prices;
+        }, prices -> {
+            for (Cart.Line line : session.cart.lines) {
+                String key = String.valueOf(line.variationId);
+                if (!line.priceEdited && prices.has(key)) {
+                    line.unitPrice = prices.getDouble(key);
+                }
+            }
+            render();
+        });
     }
 
     private void addProductRow(LinearLayout parent, Product product) {
@@ -256,7 +313,11 @@ public class PosActivity extends BaseActivity {
         price.setText(String.valueOf(line.unitPrice));
         price.setOnFocusChangeListener((view, focused) -> {
             if (!focused) {
-                line.unitPrice = number(price);
+                double edited = number(price);
+                if (edited != line.unitPrice) {
+                    line.unitPrice = edited;
+                    line.priceEdited = true;
+                }
                 render();
             }
         });

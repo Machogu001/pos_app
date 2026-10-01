@@ -14,6 +14,7 @@ public class Cart {
         public final String sku;
         public double quantity;
         public double unitPrice;
+        public boolean priceEdited;
 
         public Line(int variationId, String name, String sku, double quantity, double unitPrice) {
             this.variationId = variationId;
