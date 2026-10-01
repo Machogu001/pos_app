@@ -41,6 +41,7 @@ public class AppSession implements ApiClient.TokenProvider {
     private SharedPreferences prefs;
     private TokenStore tokenStore;
     private PosApi api;
+    private long tokenSavedAt;
 
     public static AppSession get(Context context) {
         if (instance == null) {
@@ -78,6 +79,12 @@ public class AppSession implements ApiClient.TokenProvider {
 
     public void saveToken(String token) throws Exception {
         tokenStore.save(token);
+        tokenSavedAt = System.currentTimeMillis();
+    }
+
+    /** True when a sign-in happened moments ago, so a 401 indicates a server setup problem. */
+    public boolean tokenIsFresh() {
+        return tokenSavedAt > 0 && System.currentTimeMillis() - tokenSavedAt < 120_000;
     }
 
     public void clearAuth() {

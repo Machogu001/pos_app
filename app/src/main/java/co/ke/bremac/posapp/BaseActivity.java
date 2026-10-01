@@ -129,7 +129,7 @@ public abstract class BaseActivity extends AppCompatActivity {
         if (exception instanceof ApiException) {
             ApiException apiException = (ApiException) exception;
             if (apiException.isUnauthenticated()) {
-                expireSession();
+                expireSession(apiException.getMessage());
             } else if ("otp_expired".equals(apiException.code)) {
                 goToLogin("Your verification code expired. Please sign in again.");
             } else if ("register_closed".equals(apiException.code)) {
@@ -146,8 +146,23 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     protected void expireSession() {
+        expireSession(null);
+    }
+
+    protected void expireSession(String serverMessage) {
+        boolean freshLogin = session.tokenIsFresh();
         session.clearAuth();
-        goToLogin("Your session has expired. Please sign in again.");
+        String message;
+        if (serverMessage != null && !serverMessage.isEmpty()
+                && !serverMessage.toLowerCase(java.util.Locale.ROOT).startsWith("unauthenticated")) {
+            message = serverMessage;
+        } else if (freshLogin) {
+            message = "Signed in, but the server rejected the login token. Ask the administrator to "
+                    + "update the server (git pull) so the Authorization header reaches the app API.";
+        } else {
+            message = "Your session has expired. Please sign in again.";
+        }
+        goToLogin(message);
     }
 
     protected void goToLogin(String message) {

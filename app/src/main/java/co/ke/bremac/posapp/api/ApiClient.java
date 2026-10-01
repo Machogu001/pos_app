@@ -38,7 +38,10 @@ public class ApiClient {
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         if (auth) {
-            connection.setRequestProperty("Authorization", "Bearer " + tokenProvider.token());
+            String bearer = "Bearer " + tokenProvider.token();
+            connection.setRequestProperty("Authorization", bearer);
+            // Some shared hosts strip Authorization; the server restores it from this header.
+            connection.setRequestProperty("X-Authorization", bearer);
         }
         if (body != null) {
             connection.setDoOutput(true);
