@@ -37,7 +37,9 @@ public class ApiClient {
         connection.setRequestMethod(method);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        if (auth) connection.setRequestProperty("Authorization", "Bearer " + tokenProvider.token());
+        if (auth) {
+            connection.setRequestProperty("Authorization", "Bearer " + tokenProvider.token());
+        }
         if (body != null) {
             connection.setDoOutput(true);
             try (OutputStream out = connection.getOutputStream()) {
@@ -61,7 +63,11 @@ public class ApiClient {
         StringBuilder out = new StringBuilder();
         for (Map.Entry<String, String> e : params.entrySet()) {
             if (e.getValue() == null) continue;
-            if (out.length() == 0) out.append('?'); else out.append('&');
+            if (out.length() == 0) {
+                out.append('?');
+            } else {
+                out.append('&');
+            }
             out.append(enc(e.getKey())).append('=').append(enc(e.getValue()));
         }
         return out.toString();

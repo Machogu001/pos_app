@@ -27,19 +27,29 @@ public class TokenStore {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, key());
         byte[] encrypted = cipher.doFinal(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String encoded = Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)
+                + ":"
+                + Base64.encodeToString(encrypted, Base64.NO_WRAP);
         prefs.edit()
-                .putString(TOKEN, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + ":" + Base64.encodeToString(encrypted, Base64.NO_WRAP))
+                .putString(TOKEN, encoded)
                 .apply();
     }
 
     public String get() {
         try {
             String stored = prefs.getString(TOKEN, "");
-            if (stored == null || stored.isEmpty() || !stored.contains(":")) return "";
+            if (stored == null || stored.isEmpty() || !stored.contains(":")) {
+                return "";
+            }
             String[] parts = stored.split(":", 2);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, Base64.decode(parts[0], Base64.NO_WRAP)));
-            return new String(cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)), java.nio.charset.StandardCharsets.UTF_8);
+            cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    key(),
+                    new GCMParameterSpec(128, Base64.decode(parts[0], Base64.NO_WRAP)));
+            return new String(
+                    cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)),
+                    java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             clear();
             return "";
@@ -53,9 +63,13 @@ public class TokenStore {
     private SecretKey key() throws Exception {
         KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
         ks.load(null);
-        if (ks.containsAlias(ALIAS)) return (SecretKey) ks.getKey(ALIAS, null);
+        if (ks.containsAlias(ALIAS)) {
+            return (SecretKey) ks.getKey(ALIAS, null);
+        }
         KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
-        generator.init(new KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+        generator.init(new KeyGenParameterSpec.Builder(
+                ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setRandomizedEncryptionRequired(true)

@@ -10,6 +10,30 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".SaleDetailActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".SalesActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".ReceiptActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".CheckoutActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".PosActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".HomeActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".OtpActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".LoginActivity"
+            android:configChanges="orientation|screenSize" />
+        <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize"
             android:exported="true">

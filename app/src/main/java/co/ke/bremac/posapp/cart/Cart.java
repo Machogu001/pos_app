@@ -67,22 +67,30 @@ public class Cart {
 
     public double subtotal(int precision) {
         BigDecimal total = BigDecimal.ZERO;
-        for (Line line : lines) total = total.add(BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitPrice)));
+        for (Line line : lines) {
+            total = total.add(BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitPrice)));
+        }
         return round(total, precision);
     }
 
     public double discount(int precision) {
         BigDecimal sub = BigDecimal.valueOf(subtotal(precision));
         BigDecimal discount = "percentage".equals(discountType)
-                ? sub.multiply(BigDecimal.valueOf(discountAmount)).divide(BigDecimal.valueOf(100), precision + 4, RoundingMode.HALF_UP)
+                ? sub.multiply(BigDecimal.valueOf(discountAmount))
+                        .divide(BigDecimal.valueOf(100), precision + 4, RoundingMode.HALF_UP)
                 : BigDecimal.valueOf(discountAmount);
-        if (discount.compareTo(BigDecimal.ZERO) < 0) discount = BigDecimal.ZERO;
-        if (discount.compareTo(sub) > 0) discount = sub;
+        if (discount.compareTo(BigDecimal.ZERO) < 0) {
+            discount = BigDecimal.ZERO;
+        }
+        if (discount.compareTo(sub) > 0) {
+            discount = sub;
+        }
         return round(discount, precision);
     }
 
     public double total(int precision) {
-        return round(BigDecimal.valueOf(subtotal(precision)).subtract(BigDecimal.valueOf(discount(precision))), precision);
+        BigDecimal total = BigDecimal.valueOf(subtotal(precision)).subtract(BigDecimal.valueOf(discount(precision)));
+        return round(total, precision);
     }
 
     public double paid(int precision) {

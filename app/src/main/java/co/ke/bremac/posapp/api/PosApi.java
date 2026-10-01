@@ -13,61 +13,126 @@ public class PosApi {
     }
 
     public JSONObject login(String username, String password, String deviceName, String method) throws Exception {
-        JSONObject body = new JSONObject().put("username", username).put("password", password).put("device_name", deviceName);
-        if (method != null) body.put("otp_delivery_method", method);
+        JSONObject body = new JSONObject()
+                .put("username", username)
+                .put("password", password)
+                .put("device_name", deviceName);
+        if (method != null) {
+            body.put("otp_delivery_method", method);
+        }
         return client.request("POST", "/auth/login", body, false);
     }
 
     public JSONObject verifyOtp(String session, String otp, String deviceName) throws Exception {
-        return client.request("POST", "/auth/otp/verify", new JSONObject().put("otp_session", session).put("otp", otp).put("device_name", deviceName), false);
+        JSONObject body = new JSONObject()
+                .put("otp_session", session)
+                .put("otp", otp)
+                .put("device_name", deviceName);
+        return client.request("POST", "/auth/otp/verify", body, false);
     }
 
     public JSONObject resendOtp(String session, String method) throws Exception {
         JSONObject body = new JSONObject().put("otp_session", session);
-        if (method != null) body.put("otp_delivery_method", method);
+        if (method != null) {
+            body.put("otp_delivery_method", method);
+        }
         return client.request("POST", "/auth/otp/resend", body, false);
     }
 
-    public JSONObject logout() throws Exception { return client.request("POST", "/auth/logout", new JSONObject(), true); }
-    public JSONObject me() throws Exception { return client.request("GET", "/me", null, true); }
+    public JSONObject logout() throws Exception {
+        return client.request("POST", "/auth/logout", new JSONObject(), true);
+    }
+
+    public JSONObject me() throws Exception {
+        return client.request("GET", "/me", null, true);
+    }
+
     public JSONObject dashboard(String locationId, String period) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("location_id", locationId); p.put("period", period);
-        return client.request("GET", "/dashboard" + ApiClient.q(p), null, true);
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("location_id", locationId);
+        params.put("period", period);
+        return client.request("GET", "/dashboard" + ApiClient.q(params), null, true);
     }
-    public JSONObject products(String q, String locationId, int page) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("q", q); p.put("location_id", locationId); p.put("page", String.valueOf(page)); p.put("per_page", "20");
-        return client.request("GET", "/products" + ApiClient.q(p), null, true);
+
+    public JSONObject products(String query, String locationId, int page) throws Exception {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("q", query);
+        params.put("location_id", locationId);
+        params.put("page", String.valueOf(page));
+        params.put("per_page", "20");
+        return client.request("GET", "/products" + ApiClient.q(params), null, true);
     }
+
     public JSONObject lookup(String code, String locationId) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("code", code); p.put("location_id", locationId);
-        return client.request("GET", "/products/lookup" + ApiClient.q(p), null, true);
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("code", code);
+        params.put("location_id", locationId);
+        return client.request("GET", "/products/lookup" + ApiClient.q(params), null, true);
     }
-    public JSONObject customers(String q, int page) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("q", q); p.put("page", String.valueOf(page));
-        return client.request("GET", "/customers" + ApiClient.q(p), null, true);
+
+    public JSONObject customers(String query, int page) throws Exception {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("q", query);
+        params.put("page", String.valueOf(page));
+        return client.request("GET", "/customers" + ApiClient.q(params), null, true);
     }
+
     public JSONObject createCustomer(String name, String mobile, String email) throws Exception {
-        JSONObject b = new JSONObject().put("name", name).put("mobile", mobile); if (email != null) b.put("email", email);
-        return client.request("POST", "/customers", b, true);
+        JSONObject body = new JSONObject()
+                .put("name", name)
+                .put("mobile", mobile);
+        if (email != null) {
+            body.put("email", email);
+        }
+        return client.request("POST", "/customers", body, true);
     }
+
     public JSONObject paymentMethods(String locationId) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("location_id", locationId);
-        return client.request("GET", "/payment-methods" + ApiClient.q(p), null, true);
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("location_id", locationId);
+        return client.request("GET", "/payment-methods" + ApiClient.q(params), null, true);
     }
+
     public JSONObject openRegister(String locationId, double amount) throws Exception {
-        return client.request("POST", "/cash-register/open", new JSONObject().put("location_id", Integer.parseInt(locationId)).put("opening_amount", amount), true);
+        JSONObject body = new JSONObject()
+                .put("location_id", Integer.parseInt(locationId))
+                .put("opening_amount", amount);
+        return client.request("POST", "/cash-register/open", body, true);
     }
+
     public JSONObject closeRegister(double amount, String note) throws Exception {
-        return client.request("POST", "/cash-register/close", new JSONObject().put("closing_amount", amount).put("closing_note", note == null ? "" : note), true);
+        JSONObject body = new JSONObject()
+                .put("closing_amount", amount)
+                .put("closing_note", note == null ? "" : note);
+        return client.request("POST", "/cash-register/close", body, true);
     }
+
     public JSONObject stk(String phone, double amount, String locationId) throws Exception {
-        return client.request("POST", "/mpesa/stk-push", new JSONObject().put("phone", phone).put("amount", amount).put("location_id", Integer.parseInt(locationId)), true);
+        JSONObject body = new JSONObject()
+                .put("phone", phone)
+                .put("amount", amount)
+                .put("location_id", Integer.parseInt(locationId));
+        return client.request("POST", "/mpesa/stk-push", body, true);
     }
-    public JSONObject mpesaStatus(String id) throws Exception { return client.request("GET", "/mpesa/status/" + id, null, true); }
-    public JSONObject createSale(JSONObject body) throws Exception { return client.request("POST", "/sales", body, true); }
-    public JSONObject sales(String status, String locationId, String q, int page) throws Exception {
-        Map<String, String> p = new LinkedHashMap<>(); p.put("status", status); p.put("location_id", locationId); p.put("q", q); p.put("page", String.valueOf(page));
-        return client.request("GET", "/sales" + ApiClient.q(p), null, true);
+
+    public JSONObject mpesaStatus(String id) throws Exception {
+        return client.request("GET", "/mpesa/status/" + id, null, true);
     }
-    public JSONObject sale(int id) throws Exception { return client.request("GET", "/sales/" + id, null, true); }
+
+    public JSONObject createSale(JSONObject body) throws Exception {
+        return client.request("POST", "/sales", body, true);
+    }
+
+    public JSONObject sales(String status, String locationId, String query, int page) throws Exception {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("status", status);
+        params.put("location_id", locationId);
+        params.put("q", query);
+        params.put("page", String.valueOf(page));
+        return client.request("GET", "/sales" + ApiClient.q(params), null, true);
+    }
+
+    public JSONObject sale(int id) throws Exception {
+        return client.request("GET", "/sales/" + id, null, true);
+    }
 }

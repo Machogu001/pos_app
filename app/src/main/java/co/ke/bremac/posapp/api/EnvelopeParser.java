@@ -43,7 +43,9 @@ public final class EnvelopeParser {
                     JSONArray values = errors.optJSONArray(name);
                     ArrayList<String> messages = new ArrayList<>();
                     if (values != null) {
-                        for (int j = 0; j < values.length(); j++) messages.add(values.optString(j));
+                        for (int j = 0; j < values.length(); j++) {
+                            messages.add(values.optString(j));
+                        }
                     } else {
                         messages.add(errors.optString(name));
                     }
