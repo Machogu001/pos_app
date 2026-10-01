@@ -10,32 +10,53 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".ProductsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".CustomersActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".RegisterActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".SaleDetailActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".SalesActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ReceiptActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".CheckoutActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".PosActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".HomeActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".OtpActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".LoginActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -44,3 +65,4 @@
         </activity>
     </application>
 </manifest>
+

@@ -1,12 +1,11 @@
 <resources>
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">#133E38</item>
-        <item name="colorPrimaryDark">#102F2B</item>
-        <item name="colorAccent">#11A683</item>
-        <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#102F2B</item>
-        <item name="android:navigationBarColor">#102F2B</item>
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryDark">@color/brand_primary_dark</item>
+        <item name="colorAccent">@color/brand_primary</item>
+        <item name="colorControlActivated">@color/brand_primary</item>
+        <item name="android:windowBackground">@color/canvas</item>
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 </resources>

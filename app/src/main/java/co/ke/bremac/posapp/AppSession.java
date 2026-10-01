@@ -25,7 +25,9 @@ import java.util.List;
 
 public class AppSession implements ApiClient.TokenProvider {
     private static final String PREFS = "pos_app";
+    private static final String PROFILE = "profile_json";
     private static AppSession instance;
+    private boolean profileLoaded;
 
     public final Cart cart = new Cart();
     public String serverUrl = "";
@@ -56,6 +58,7 @@ public class AppSession implements ApiClient.TokenProvider {
         serverUrl = prefs.getString("server_url", "");
         locationId = prefs.getString("location_id", "");
         rebuildApi();
+        restoreProfile();
     }
 
     public PosApi api() {
@@ -91,21 +94,62 @@ public class AppSession implements ApiClient.TokenProvider {
         tokenStore.clear();
         cart.clear();
         selectedCustomer = null;
+        lastSale = null;
+        profileLoaded = false;
+        prefs.edit().remove(PROFILE).apply();
+        user = User.fromJson(null);
+        business = Business.fromJson(null);
+        permissions = new Permissions(null);
+        register = null;
+        locations = new ArrayList<>();
+        paymentMethods = new ArrayList<>();
     }
 
     public boolean isSignedIn() {
         return !serverUrl.isEmpty() && !token().isEmpty();
     }
 
+    /** True once GET /me has been applied (now or in a previous app run). */
+    public boolean hasProfile() {
+        return profileLoaded;
+    }
+
     public void applyMe(JSONObject data) {
+        parseProfile(data);
+        prefs.edit().putString(PROFILE, data.toString()).apply();
+    }
+
+    private void restoreProfile() {
+        String stored = prefs.getString(PROFILE, "");
+        if (stored == null || stored.isEmpty() || token().isEmpty()) {
+            return;
+        }
+        try {
+            parseProfile(new JSONObject(stored));
+        } catch (Exception ignored) {
+            prefs.edit().remove(PROFILE).apply();
+        }
+    }
+
+    private void parseProfile(JSONObject data) {
         user = User.fromJson(data.optJSONObject("user"));
         business = Business.fromJson(data.optJSONObject("business"));
         permissions = new Permissions(data.optJSONObject("permissions"));
         register = Register.fromJson(data.optJSONObject("register"));
         locations = Json.list(data.optJSONArray("locations"), Location::fromJson);
-        if (locationId.isEmpty() && !locations.isEmpty()) {
+        boolean known = false;
+        for (Location location : locations) {
+            known |= String.valueOf(location.id).equals(locationId);
+        }
+        if (!known && !locations.isEmpty()) {
             setLocationId(String.valueOf(locations.get(0).id));
         }
+        profileLoaded = true;
+    }
+
+    public String selectedLocationName() {
+        Location location = selectedLocation();
+        return location == null ? "" : location.name;
     }
 
     public Location selectedLocation() {
