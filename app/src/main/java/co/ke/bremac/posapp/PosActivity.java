@@ -62,7 +62,7 @@ public class PosActivity extends BaseActivity {
         if (!ensureAccess(session.permissions.sellCreate)) {
             return;
         }
-        setScreenTitle("New sale");
+        setScreenTitle("Quick sale");
         buildBottomBar();
         render();
         loadPaymentMethods();

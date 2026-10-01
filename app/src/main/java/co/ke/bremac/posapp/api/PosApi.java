@@ -47,6 +47,11 @@ public class PosApi {
         return client.request("GET", "/me", null, true);
     }
 
+    /** Single-use link that signs this user into the website (e.g. the full POS screen). */
+    public JSONObject webSession(String target) throws Exception {
+        return client.request("POST", "/web-session", new JSONObject().put("target", target), true);
+    }
+
     public JSONObject dashboard(String locationId, String period) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("location_id", locationId);

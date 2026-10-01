@@ -7,6 +7,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -108,6 +109,11 @@ public class HomeActivity extends BaseActivity {
                 Typeface.BOLD), Ui.params(this, -2, -2, 2));
         hero.addView(Ui.text(this, session.business.name, 13, Ui.withAlpha(Color.WHITE, 0.8f), Typeface.NORMAL),
                 Ui.params(this, -2, -2, 8));
+        if (session.permissions.sellCreate) {
+            Button openPos = Ui.button(this, "Open POS", Color.WHITE, Ui.PRIMARY_DARK, 0);
+            openPos.setOnClickListener(view -> startActivity(new Intent(this, WebPosActivity.class)));
+            hero.addView(openPos, Ui.params(this, -1, 50, 16));
+        }
         content.addView(hero, new LinearLayout.LayoutParams(-1, -2));
     }
 
@@ -144,7 +150,7 @@ public class HomeActivity extends BaseActivity {
         Permissions permissions = session.permissions;
         List<View> tiles = new ArrayList<>();
         if (permissions.sellCreate) {
-            tiles.add(tile(R.drawable.ic_cart, "New sale", Ui.PRIMARY, Ui.PRIMARY_SOFT, PosActivity.class));
+            tiles.add(tile(R.drawable.ic_cart, "Quick sale", Ui.PRIMARY, Ui.PRIMARY_SOFT, PosActivity.class));
         }
         if (permissions.viewSales) {
             tiles.add(tile(R.drawable.ic_receipt, "Sales history", Ui.INFO, Ui.INFO_SOFT, SalesActivity.class));

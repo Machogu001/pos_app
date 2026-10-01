@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">BreMac POS</string>
+    <string name="app_name">BreMac360 POS</string>
+    <string name="launcher_name">BreMac360</string>
 </resources>

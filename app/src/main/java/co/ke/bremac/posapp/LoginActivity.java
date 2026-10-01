@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -34,7 +35,7 @@ public class LoginActivity extends BaseActivity {
     private void render() {
         content.removeAllViews();
         content.setGravity(Gravity.CENTER_HORIZONTAL);
-        addBrandHeader(this, content, "Welcome back", "Sign in to your BreMac POS account");
+        addBrandHeader(this, content, "Welcome back", "Sign in to your BreMac360 POS account");
 
         String message = getIntent().getStringExtra("message");
         if (message != null && !message.isEmpty()) {
@@ -82,21 +83,18 @@ public class LoginActivity extends BaseActivity {
 
     /** Logo, app name and subtitle shared by the sign-in and verification screens. */
     static void addBrandHeader(BaseActivity activity, LinearLayout parent, String heading, String subtitle) {
-        TextView logo = Ui.text(activity, "B", 30, Color.WHITE, Typeface.BOLD);
-        logo.setGravity(Gravity.CENTER);
-        logo.setBackground(Ui.rounded(Ui.PRIMARY, Ui.dp(activity, 20)));
-        logo.setElevation(Ui.dp(activity, 4));
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(Ui.dp(activity, 68), Ui.dp(activity, 68));
-        logoParams.topMargin = Ui.dp(activity, 28);
+        ImageView logo = new ImageView(activity);
+        logo.setImageResource(R.drawable.logo_stacked);
+        logo.setAdjustViewBounds(true);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        logo.setContentDescription("BreMac360 POS");
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(Ui.dp(activity, 190), -2);
+        logoParams.topMargin = Ui.dp(activity, 20);
         parent.addView(logo, logoParams);
 
-        TextView brand = Ui.text(activity, "BreMac POS", 14, Ui.PRIMARY, Typeface.BOLD);
-        brand.setGravity(Gravity.CENTER);
-        parent.addView(brand, Ui.params(activity, -2, -2, 14));
-
-        TextView title = Ui.text(activity, heading, 26, Ui.INK, Typeface.BOLD);
+        TextView title = Ui.text(activity, heading, 24, Ui.INK, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        parent.addView(title, Ui.params(activity, -2, -2, 6));
+        parent.addView(title, Ui.params(activity, -2, -2, 18));
 
         TextView sub = Ui.text(activity, subtitle, 14, Ui.MUTED, Typeface.NORMAL);
         sub.setGravity(Gravity.CENTER);

@@ -17,11 +17,11 @@ public class Business {
 
     public static Business fromJson(JSONObject object) {
         if (object == null) {
-            return new Business(0, "BreMac POS", Currency.fromJson(null), "");
+            return new Business(0, "BreMac360 POS", Currency.fromJson(null), "");
         }
         return new Business(
                 object.optInt("id"),
-                object.optString("name", "BreMac POS"),
+                object.optString("name", "BreMac360 POS"),
                 Currency.fromJson(object.optJSONObject("currency")),
                 object.optString("logo_url", ""));
     }

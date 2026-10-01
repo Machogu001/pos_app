@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
@@ -82,6 +83,11 @@ public abstract class BaseActivity extends AppCompatActivity {
         return null;
     }
 
+    /** False for screens that manage their own scrolling (e.g. a WebView filling the screen). */
+    protected boolean scrollable() {
+        return true;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -116,13 +122,17 @@ public abstract class BaseActivity extends AppCompatActivity {
             main.addView(appBar, new LinearLayout.LayoutParams(-1, -2));
         }
 
-        scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
-        scrollView.setClipToPadding(false);
         content = Ui.column(this);
-        content.setPadding(Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 24));
-        scrollView.addView(content, new ScrollView.LayoutParams(-1, -2));
-        main.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
+        if (scrollable()) {
+            scrollView = new ScrollView(this);
+            scrollView.setFillViewport(true);
+            scrollView.setClipToPadding(false);
+            content.setPadding(Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 24));
+            scrollView.addView(content, new ScrollView.LayoutParams(-1, -2));
+            main.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
+        } else {
+            main.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
+        }
 
         bottomBar = Ui.column(this);
         bottomBar.setBackgroundColor(Ui.SURFACE);
@@ -195,7 +205,8 @@ public abstract class BaseActivity extends AppCompatActivity {
                 appBar.setPadding(Ui.dp(this, 4), bars.top + Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6));
             }
             boolean bottomVisible = bottomBar.getVisibility() == View.VISIBLE;
-            scrollView.setPadding(0, appBar == null ? bars.top : 0, 0, bottomVisible ? 0 : bottom);
+            View body = scrollView != null ? scrollView : content;
+            body.setPadding(0, appBar == null ? bars.top : 0, 0, bottomVisible ? 0 : bottom);
             bottomBar.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12) + bottom);
             // Do not consume: the navigation drawer is a sibling and needs the same insets.
             return insets;
@@ -211,6 +222,13 @@ public abstract class BaseActivity extends AppCompatActivity {
         };
         getOnBackPressedDispatcher().addCallback(this, closeDrawer);
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerSlide(View drawerView, float slideOffset) {
+                // The drawer header is white: switch to dark status-bar icons while it is mostly open.
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())
+                        .setAppearanceLightStatusBars(slideOffset > 0.5f);
+            }
+
             @Override
             public void onDrawerOpened(View drawerView) {
                 closeDrawer.setEnabled(true);
@@ -277,7 +295,9 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     protected void scrollToTop() {
-        scrollView.post(() -> scrollView.smoothScrollTo(0, 0));
+        if (scrollView != null) {
+            scrollView.post(() -> scrollView.smoothScrollTo(0, 0));
+        }
     }
 
     // ---- Navigation & access ----------------------------------------------------------------
@@ -370,6 +390,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void expireSession(String serverMessage) {
         boolean freshLogin = session.tokenIsFresh();
         session.clearAuth();
+        WebPosActivity.clearWebSession();
         String message;
         if (serverMessage != null && !serverMessage.isEmpty()
                 && !serverMessage.toLowerCase(Locale.ROOT).startsWith("unauthenticated")) {
@@ -409,6 +430,7 @@ public abstract class BaseActivity extends AppCompatActivity {
             }
         }, result -> {
             session.clearAuth();
+            WebPosActivity.clearWebSession();
             goToLogin("You have been signed out.");
         });
     }

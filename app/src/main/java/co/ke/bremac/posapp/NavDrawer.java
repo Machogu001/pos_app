@@ -3,7 +3,6 @@ package co.ke.bremac.posapp;
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.view.View;
@@ -21,7 +20,7 @@ import co.ke.bremac.posapp.ui.Ui;
 
 /** Slide-out menu listing only the screens the signed-in user's role allows. */
 public final class NavDrawer {
-    public enum Item { HOME, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
+    public enum Item { HOME, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
 
     private final BaseActivity activity;
     private final ScrollView root;
@@ -40,9 +39,9 @@ public final class NavDrawer {
         root.addView(panel, new ScrollView.LayoutParams(-1, -2));
 
         header = Ui.column(activity);
-        header.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{Ui.PRIMARY_DARK, Ui.PRIMARY}));
+        header.setBackgroundColor(Ui.SURFACE);
         panel.addView(header, new LinearLayout.LayoutParams(-1, -2));
+        panel.addView(Ui.divider(activity), new LinearLayout.LayoutParams(-1, Math.max(1, Ui.dp(activity, 1))));
 
         menu = Ui.column(activity);
         panel.addView(menu, new LinearLayout.LayoutParams(-1, -2));
@@ -70,7 +69,7 @@ public final class NavDrawer {
 
     private void applyPadding() {
         int dp20 = Ui.dp(activity, 20);
-        header.setPadding(dp20 + startInset, topInset + Ui.dp(activity, 24), dp20, dp20);
+        header.setPadding(dp20 + startInset, topInset + Ui.dp(activity, 18), dp20, Ui.dp(activity, 18));
         menu.setPadding(startInset, Ui.dp(activity, 10), 0, Ui.dp(activity, 16) + bottomInset);
     }
 
@@ -81,29 +80,40 @@ public final class NavDrawer {
                 ? session.user.username
                 : session.user.fullName;
 
-        TextView avatar = Ui.avatar(activity, name, 56, Ui.PRIMARY_DARK, Color.WHITE);
-        header.addView(avatar, new LinearLayout.LayoutParams(Ui.dp(activity, 56), Ui.dp(activity, 56)));
+        ImageView logo = new ImageView(activity);
+        logo.setImageResource(R.drawable.logo_horizontal);
+        logo.setAdjustViewBounds(true);
+        logo.setScaleType(ImageView.ScaleType.FIT_START);
+        logo.setContentDescription("BreMac360 POS");
+        header.addView(logo, new LinearLayout.LayoutParams(-2, Ui.dp(activity, 44)));
 
-        TextView nameView = Ui.text(activity, name == null || name.isEmpty() ? "Signed in" : name, 18,
-                Color.WHITE, Typeface.BOLD);
+        LinearLayout userRow = Ui.row(activity);
+        TextView avatar = Ui.avatar(activity, name, 44, Color.WHITE, Ui.PRIMARY);
+        userRow.addView(avatar, new LinearLayout.LayoutParams(Ui.dp(activity, 44), Ui.dp(activity, 44)));
+        LinearLayout who = Ui.column(activity);
+        who.setPadding(Ui.dp(activity, 12), 0, 0, 0);
+        userRow.addView(who, new LinearLayout.LayoutParams(0, -2, 1));
+        header.addView(userRow, Ui.params(activity, -1, -2, 18));
+
+        TextView nameView = Ui.text(activity, name == null || name.isEmpty() ? "Signed in" : name, 16,
+                Ui.INK, Typeface.BOLD);
         nameView.setSingleLine(true);
         nameView.setEllipsize(TextUtils.TruncateAt.END);
-        header.addView(nameView, Ui.params(activity, -1, -2, 14));
+        who.addView(nameView);
 
-        TextView business = Ui.text(activity, session.business.name, 13,
-                Ui.withAlpha(Color.WHITE, 0.85f), Typeface.NORMAL);
+        TextView business = Ui.text(activity, session.business.name, 13, Ui.MUTED, Typeface.NORMAL);
         business.setSingleLine(true);
         business.setEllipsize(TextUtils.TruncateAt.END);
-        header.addView(business, Ui.params(activity, -1, -2, 2));
+        who.addView(business, Ui.params(activity, -1, -2, 1));
 
         String location = session.selectedLocationName();
         if (!location.isEmpty()) {
             LinearLayout chip = Ui.row(activity);
             chip.setPadding(Ui.dp(activity, 8), Ui.dp(activity, 4), Ui.dp(activity, 10), Ui.dp(activity, 4));
-            chip.setBackground(Ui.rounded(Ui.withAlpha(Color.WHITE, 0.16f), Ui.dp(activity, 999)));
-            ImageView pin = Ui.icon(activity, R.drawable.ic_location, Color.WHITE);
+            chip.setBackground(Ui.rounded(Ui.PRIMARY_SOFT, Ui.dp(activity, 999)));
+            ImageView pin = Ui.icon(activity, R.drawable.ic_location, Ui.PRIMARY);
             chip.addView(pin, new LinearLayout.LayoutParams(Ui.dp(activity, 14), Ui.dp(activity, 14)));
-            TextView text = Ui.text(activity, location, 12, Color.WHITE, Typeface.BOLD);
+            TextView text = Ui.text(activity, location, 12, Ui.PRIMARY_DARK, Typeface.BOLD);
             text.setPadding(Ui.dp(activity, 4), 0, 0, 0);
             text.setSingleLine(true);
             chip.addView(text);
@@ -117,7 +127,8 @@ public final class NavDrawer {
 
         addItem(Item.HOME, "Home", R.drawable.ic_dashboard, HomeActivity.class, current);
         if (permissions.sellCreate) {
-            addItem(Item.POS, "New sale", R.drawable.ic_cart, PosActivity.class, current);
+            addItem(Item.WEB_POS, "POS", R.drawable.ic_pos, WebPosActivity.class, current);
+            addItem(Item.POS, "Quick sale", R.drawable.ic_cart, PosActivity.class, current);
         }
         if (permissions.viewSales) {
             addItem(Item.SALES, "Sales history", R.drawable.ic_receipt, SalesActivity.class, current);

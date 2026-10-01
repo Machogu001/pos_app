@@ -30,10 +30,10 @@ import java.util.function.IntConsumer;
 
 /** Shared design system: colours, typography and reusable view builders. */
 public final class Ui {
-    public static final int PRIMARY = Color.rgb(15, 118, 110);
-    public static final int PRIMARY_DARK = Color.rgb(17, 78, 74);
-    public static final int PRIMARY_SOFT = Color.rgb(220, 245, 240);
-    public static final int CANVAS = Color.rgb(243, 246, 248);
+    public static final int PRIMARY = Color.rgb(29, 79, 196);
+    public static final int PRIMARY_DARK = Color.rgb(11, 42, 120);
+    public static final int PRIMARY_SOFT = Color.rgb(226, 234, 252);
+    public static final int CANVAS = Color.rgb(243, 246, 251);
     public static final int SURFACE = Color.WHITE;
     public static final int BORDER = Color.rgb(226, 232, 240);
     public static final int BORDER_STRONG = Color.rgb(203, 213, 225);
@@ -46,8 +46,8 @@ public final class Ui {
     public static final int WARNING_SOFT = Color.rgb(254, 243, 199);
     public static final int DANGER = Color.rgb(220, 38, 38);
     public static final int DANGER_SOFT = Color.rgb(254, 226, 226);
-    public static final int INFO = Color.rgb(37, 99, 235);
-    public static final int INFO_SOFT = Color.rgb(219, 234, 254);
+    public static final int INFO = Color.rgb(8, 145, 178);
+    public static final int INFO_SOFT = Color.rgb(207, 250, 254);
     public static final int GREEN = SUCCESS;
 
     private Ui() {
