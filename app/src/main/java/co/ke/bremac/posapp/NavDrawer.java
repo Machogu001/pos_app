@@ -134,6 +134,11 @@ public final class NavDrawer {
         logo.setAdjustViewBounds(true);
         logo.setScaleType(ImageView.ScaleType.FIT_START);
         logo.setContentDescription("BreMac360 POS");
+        if (Ui.isDark()) {
+            // The logo artwork is made for light backgrounds.
+            logo.setBackground(Ui.rounded(Color.WHITE, Ui.dp(activity, 10)));
+            logo.setPadding(Ui.dp(activity, 8), Ui.dp(activity, 4), Ui.dp(activity, 8), Ui.dp(activity, 4));
+        }
         header.addView(logo, new LinearLayout.LayoutParams(-2, Ui.dp(activity, 44)));
 
         LinearLayout userRow = Ui.row(activity);
@@ -162,7 +167,7 @@ public final class NavDrawer {
             chip.setBackground(Ui.rounded(Ui.PRIMARY_SOFT, Ui.dp(activity, 999)));
             ImageView pin = Ui.icon(activity, R.drawable.ic_location, Ui.PRIMARY);
             chip.addView(pin, new LinearLayout.LayoutParams(Ui.dp(activity, 14), Ui.dp(activity, 14)));
-            TextView text = Ui.text(activity, location, 12, Ui.PRIMARY_DARK, Typeface.BOLD);
+            TextView text = Ui.text(activity, location, 12, Ui.PRIMARY_TEXT, Typeface.BOLD);
             text.setPadding(Ui.dp(activity, 4), 0, 0, 0);
             text.setSingleLine(true);
             chip.addView(text);
@@ -205,6 +210,13 @@ public final class NavDrawer {
         dividerParams.setMargins(Ui.dp(activity, 24), Ui.dp(activity, 10), Ui.dp(activity, 24), Ui.dp(activity, 10));
         menu.addView(divider, dividerParams);
 
+        LinearLayout appearance = row("Appearance", R.drawable.ic_theme, Ui.MUTED, Ui.INK, false);
+        TextView mode = Ui.text(activity, ThemeMode.label(activity).replace("Use device theme", "Device"),
+                13, Ui.MUTED, Typeface.NORMAL);
+        appearance.addView(mode);
+        appearance.setOnClickListener(view -> activity.showAppearanceDialog());
+        menu.addView(appearance, rowParams());
+
         LinearLayout signOut = row("Sign out", R.drawable.ic_logout, Ui.DANGER, Ui.DANGER, false);
         signOut.setOnClickListener(view -> activity.confirmSignOut());
         menu.addView(signOut, rowParams());
@@ -235,7 +247,7 @@ public final class NavDrawer {
                 // The app already has its own "Home"; the website's is its dashboard.
                 String label = item.title.equalsIgnoreCase("home") ? "Dashboard" : item.title;
                 LinearLayout row = row(label, iconFor(item.title), selected ? Ui.PRIMARY : Ui.MUTED,
-                        selected ? Ui.PRIMARY_DARK : Ui.INK, selected);
+                        selected ? Ui.PRIMARY_TEXT : Ui.INK, selected);
                 row.setOnClickListener(view -> activity.openWebPage(item.url));
                 menu.addView(row, rowParams());
                 continue;
@@ -246,7 +258,7 @@ public final class NavDrawer {
                 childSelected |= isCurrentWebPage(child);
             }
             LinearLayout group = row(item.title, iconFor(item.title), childSelected ? Ui.PRIMARY : Ui.MUTED,
-                    childSelected ? Ui.PRIMARY_DARK : Ui.INK, false);
+                    childSelected ? Ui.PRIMARY_TEXT : Ui.INK, false);
             ImageView chevron = Ui.icon(activity, R.drawable.ic_expand_more, Ui.MUTED);
             chevron.setRotation(expanded ? 0f : -90f);
             group.addView(chevron, new LinearLayout.LayoutParams(Ui.dp(activity, 20), Ui.dp(activity, 20)));
@@ -269,7 +281,7 @@ public final class NavDrawer {
                         : Ui.ripple(null, Ui.withAlpha(Ui.PRIMARY, 0.10f), Ui.dp(activity, 22)));
                 row.setClickable(true);
                 row.setFocusable(true);
-                TextView text = Ui.text(activity, child.title, 14, selected ? Ui.PRIMARY_DARK : Ui.INK,
+                TextView text = Ui.text(activity, child.title, 14, selected ? Ui.PRIMARY_TEXT : Ui.INK,
                         selected ? Typeface.BOLD : Typeface.NORMAL);
                 text.setSingleLine(true);
                 text.setEllipsize(TextUtils.TruncateAt.END);
@@ -309,7 +321,7 @@ public final class NavDrawer {
     private void addItem(Item item, String label, int icon, Class<? extends Activity> target, Item current) {
         boolean selected = item == current;
         LinearLayout row = row(label, icon, selected ? Ui.PRIMARY : Ui.MUTED,
-                selected ? Ui.PRIMARY_DARK : Ui.INK, selected);
+                selected ? Ui.PRIMARY_TEXT : Ui.INK, selected);
         row.setOnClickListener(view -> activity.openTopLevel(target));
         menu.addView(row, rowParams());
     }

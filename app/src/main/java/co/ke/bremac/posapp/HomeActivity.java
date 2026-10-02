@@ -334,7 +334,7 @@ public class HomeActivity extends BaseActivity {
         tiles.add(Ui.statTile(this, "PAID", money("total_paid"), Ui.SUCCESS));
         tiles.add(Ui.statTile(this, "DUE", money("total_due"), Ui.DANGER));
         tiles.add(Ui.statTile(this, "EXPENSES", money("total_expense"), Ui.WARNING));
-        tiles.add(Ui.statTile(this, "NET", money("net"), Ui.PRIMARY_DARK));
+        tiles.add(Ui.statTile(this, "NET", money("net"), Ui.PRIMARY_TEXT));
         content.addView(Ui.grid(this, tiles, 2), Ui.params(this, -1, -2, 12));
     }
 

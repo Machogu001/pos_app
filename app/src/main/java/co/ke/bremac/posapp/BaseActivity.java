@@ -101,11 +101,16 @@ public abstract class BaseActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        boolean night = ThemeMode.isNight(this);
+        Ui.applyPalette(night);
+        SystemBarStyle navigationBars = night
+                ? SystemBarStyle.dark(Color.TRANSPARENT)
+                : SystemBarStyle.light(Color.TRANSPARENT, SCRIM);
         EdgeToEdge.enable(this,
-                chrome() == Chrome.NONE
+                chrome() == Chrome.NONE && !night
                         ? SystemBarStyle.light(Color.TRANSPARENT, SCRIM)
                         : SystemBarStyle.dark(Color.TRANSPARENT),
-                SystemBarStyle.light(Color.TRANSPARENT, SCRIM));
+                navigationBars);
         session = AppSession.get(this);
         executor = Executors.newSingleThreadExecutor();
         loadingDialog = new LoadingDialog(this);
@@ -262,9 +267,9 @@ public abstract class BaseActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerSlide(View drawerView, float slideOffset) {
-                // The drawer header is white: switch to dark status-bar icons while it is mostly open.
+                // The drawer header is white in the light theme: use dark status-bar icons while it is mostly open.
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())
-                        .setAppearanceLightStatusBars(slideOffset > 0.5f);
+                        .setAppearanceLightStatusBars(slideOffset > 0.5f && !Ui.isDark());
             }
 
             @Override
@@ -662,6 +667,33 @@ public abstract class BaseActivity extends AppCompatActivity {
                 .setMessage("You will need your password to sign in again.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Sign out", (dialog, which) -> signOut())
+                .show();
+    }
+
+    /** Lets the user follow the device theme or force light / dark. */
+    void showAppearanceDialog() {
+        String current = ThemeMode.get(this);
+        int selected = 0;
+        for (int i = 0; i < ThemeMode.VALUES.length; i++) {
+            if (ThemeMode.VALUES[i].equals(current)) {
+                selected = i;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Appearance")
+                .setSingleChoiceItems(ThemeMode.LABELS, selected, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (ThemeMode.VALUES[which].equals(current)) {
+                        return;
+                    }
+                    // Reopen Home fresh in the new theme (an in-place recreate loses the edge-to-edge layout).
+                    Intent restart = new Intent(this, HomeActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    ThemeMode.set(this, ThemeMode.VALUES[which]);
+                    startActivity(restart);
+                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                })
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 

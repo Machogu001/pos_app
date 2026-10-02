@@ -84,6 +84,17 @@ public class WebPosActivity extends BaseActivity {
             });
 
     /** Saves website exports (reports, PDFs, spreadsheets) to Downloads using the signed-in session. */
+    /** Darkens website pages to match the app when the dark theme is on. */
+    @SuppressWarnings("deprecation")
+    private static void applyWebTheme(WebSettings settings) {
+        boolean dark = Ui.isDark();
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            settings.setAlgorithmicDarkeningAllowed(dark);
+        } else if (android.os.Build.VERSION.SDK_INT >= 29) {
+            settings.setForceDark(dark ? WebSettings.FORCE_DARK_ON : WebSettings.FORCE_DARK_OFF);
+        }
+    }
+
     private void download(String url, String userAgent, String contentDisposition, String mimeType, long length) {
         Uri uri = Uri.parse(url);
         if (!isOwnServer(uri)) {
@@ -180,7 +191,7 @@ public class WebPosActivity extends BaseActivity {
         content.addView(frame, new LinearLayout.LayoutParams(-1, -1));
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.WHITE);
+        webView.setBackgroundColor(Ui.isDark() ? Ui.CANVAS : Color.WHITE);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -195,7 +206,9 @@ public class WebPosActivity extends BaseActivity {
         settings.setSupportMultipleWindows(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         // Lets the server render its in-app layout (no website header/sidebar; menu handed to the app).
-        settings.setUserAgentString(settings.getUserAgentString() + " BreMac360App/" + BuildConfig.VERSION_NAME);
+        settings.setUserAgentString(settings.getUserAgentString() + " BreMac360App/" + BuildConfig.VERSION_NAME
+                + " (" + co.ke.bremac.posapp.api.ApiClient.deviceName() + ")");
+        applyWebTheme(settings);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setOnLongClickListener(view -> {
             // No browser-style link/image previews on long press; text fields keep copy & paste.

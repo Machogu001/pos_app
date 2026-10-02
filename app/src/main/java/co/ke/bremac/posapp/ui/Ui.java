@@ -30,26 +30,84 @@ import java.util.function.IntConsumer;
 
 /** Shared design system: colours, typography and reusable view builders. */
 public final class Ui {
-    public static final int PRIMARY = Color.rgb(29, 79, 196);
-    public static final int PRIMARY_DARK = Color.rgb(11, 42, 120);
-    public static final int PRIMARY_SOFT = Color.rgb(226, 234, 252);
-    public static final int CANVAS = Color.rgb(243, 246, 251);
-    public static final int SURFACE = Color.WHITE;
-    public static final int BORDER = Color.rgb(226, 232, 240);
-    public static final int BORDER_STRONG = Color.rgb(203, 213, 225);
-    public static final int TRACK = Color.rgb(232, 238, 242);
-    public static final int INK = Color.rgb(15, 23, 42);
-    public static final int MUTED = Color.rgb(100, 116, 139);
-    public static final int SUCCESS = Color.rgb(21, 128, 61);
-    public static final int SUCCESS_SOFT = Color.rgb(220, 252, 231);
-    public static final int WARNING = Color.rgb(180, 83, 9);
-    public static final int WARNING_SOFT = Color.rgb(254, 243, 199);
-    public static final int DANGER = Color.rgb(220, 38, 38);
-    public static final int DANGER_SOFT = Color.rgb(254, 226, 226);
-    public static final int INFO = Color.rgb(8, 145, 178);
-    public static final int INFO_SOFT = Color.rgb(207, 250, 254);
-    public static final int GREEN = SUCCESS;
+    // Palette: light values by default; applyPalette() swaps them before a screen builds its views.
+    public static int PRIMARY;
+    /** Brand navy used for the app bar and hero backgrounds in both themes. */
+    public static int PRIMARY_DARK;
+    /** Strong brand colour for text and icons drawn on SURFACE / PRIMARY_SOFT. */
+    public static int PRIMARY_TEXT;
+    public static int PRIMARY_SOFT;
+    public static int CANVAS;
+    public static int SURFACE;
+    public static int BORDER;
+    public static int BORDER_STRONG;
+    public static int TRACK;
+    public static int INK;
+    public static int MUTED;
+    public static int SUCCESS;
+    public static int SUCCESS_SOFT;
+    public static int WARNING;
+    public static int WARNING_SOFT;
+    public static int DANGER;
+    public static int DANGER_SOFT;
+    public static int INFO;
+    public static int INFO_SOFT;
+    public static int GREEN;
+    private static boolean dark;
 
+    static {
+        applyPalette(false);
+    }
+
+    /** Switches every colour above to the light or dark palette. */
+    public static void applyPalette(boolean darkTheme) {
+        dark = darkTheme;
+        PRIMARY_DARK = Color.rgb(11, 42, 120);
+        if (darkTheme) {
+            PRIMARY = Color.rgb(59, 110, 230);
+            PRIMARY_TEXT = Color.rgb(147, 180, 255);
+            PRIMARY_SOFT = Color.rgb(30, 42, 78);
+            CANVAS = Color.rgb(11, 15, 25);
+            SURFACE = Color.rgb(23, 29, 42);
+            BORDER = Color.rgb(41, 50, 67);
+            BORDER_STRONG = Color.rgb(66, 77, 97);
+            TRACK = Color.rgb(33, 41, 57);
+            INK = Color.rgb(233, 237, 244);
+            MUTED = Color.rgb(148, 163, 184);
+            SUCCESS = Color.rgb(74, 222, 128);
+            SUCCESS_SOFT = Color.rgb(20, 52, 36);
+            WARNING = Color.rgb(251, 191, 36);
+            WARNING_SOFT = Color.rgb(61, 45, 14);
+            DANGER = Color.rgb(248, 113, 113);
+            DANGER_SOFT = Color.rgb(67, 26, 30);
+            INFO = Color.rgb(34, 211, 238);
+            INFO_SOFT = Color.rgb(14, 50, 61);
+        } else {
+            PRIMARY = Color.rgb(29, 79, 196);
+            PRIMARY_TEXT = PRIMARY_DARK;
+            PRIMARY_SOFT = Color.rgb(226, 234, 252);
+            CANVAS = Color.rgb(243, 246, 251);
+            SURFACE = Color.WHITE;
+            BORDER = Color.rgb(226, 232, 240);
+            BORDER_STRONG = Color.rgb(203, 213, 225);
+            TRACK = Color.rgb(232, 238, 242);
+            INK = Color.rgb(15, 23, 42);
+            MUTED = Color.rgb(100, 116, 139);
+            SUCCESS = Color.rgb(21, 128, 61);
+            SUCCESS_SOFT = Color.rgb(220, 252, 231);
+            WARNING = Color.rgb(180, 83, 9);
+            WARNING_SOFT = Color.rgb(254, 243, 199);
+            DANGER = Color.rgb(220, 38, 38);
+            DANGER_SOFT = Color.rgb(254, 226, 226);
+            INFO = Color.rgb(8, 145, 178);
+            INFO_SOFT = Color.rgb(207, 250, 254);
+        }
+        GREEN = SUCCESS;
+    }
+
+    public static boolean isDark() {
+        return dark;
+    }
     private Ui() {
     }
 
@@ -208,7 +266,7 @@ public final class Ui {
         track.setBackground(rounded(TRACK, dp(context, 12)));
         for (int i = 0; i < labels.length; i++) {
             boolean active = i == selected;
-            TextView option = text(context, labels[i], 14, active ? PRIMARY_DARK : MUTED, Typeface.BOLD);
+            TextView option = text(context, labels[i], 14, active ? PRIMARY_TEXT : MUTED, Typeface.BOLD);
             option.setGravity(Gravity.CENTER);
             option.setBackground(active
                     ? rounded(SURFACE, dp(context, 9))

@@ -119,7 +119,7 @@ public final class CustomerDialog {
                     Ui.WARNING, Ui.WARNING_SOFT);
         }
         LinearLayout row = Ui.listRow(activity, customer.name, subtitle, null, pill);
-        row.addView(Ui.avatar(activity, customer.name, 40, Ui.PRIMARY_DARK, Ui.PRIMARY_SOFT), 0,
+        row.addView(Ui.avatar(activity, customer.name, 40, Ui.PRIMARY_TEXT, Ui.PRIMARY_SOFT), 0,
                 new LinearLayout.LayoutParams(Ui.dp(activity, 40), Ui.dp(activity, 40)));
         ((LinearLayout.LayoutParams) row.getChildAt(1).getLayoutParams()).setMarginStart(Ui.dp(activity, 12));
         return row;

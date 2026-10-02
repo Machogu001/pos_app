@@ -36,7 +36,7 @@ public class ReceiptActivity extends BaseActivity {
         title.setGravity(Gravity.CENTER);
         hero.addView(title, Ui.params(this, -2, -2, 14));
         if (sale != null) {
-            TextView total = Ui.text(this, session.money().format(sale.finalTotal), 28, Ui.PRIMARY_DARK, Typeface.BOLD);
+            TextView total = Ui.text(this, session.money().format(sale.finalTotal), 28, Ui.PRIMARY_TEXT, Typeface.BOLD);
             total.setGravity(Gravity.CENTER);
             hero.addView(total, Ui.params(this, -2, -2, 4));
         }

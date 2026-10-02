@@ -40,7 +40,7 @@ public class LoginActivity extends BaseActivity {
         String message = getIntent().getStringExtra("message");
         if (message != null && !message.isEmpty()) {
             boolean neutral = message.startsWith("You have been signed out");
-            content.addView(Ui.banner(this, message, neutral ? Ui.PRIMARY_DARK : Ui.DANGER,
+            content.addView(Ui.banner(this, message, neutral ? Ui.PRIMARY_TEXT : Ui.DANGER,
                     neutral ? Ui.PRIMARY_SOFT : Ui.DANGER_SOFT), Ui.params(this, -1, -2, 20));
         }
 
@@ -88,6 +88,11 @@ public class LoginActivity extends BaseActivity {
         logo.setAdjustViewBounds(true);
         logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         logo.setContentDescription("BreMac360 POS");
+        if (Ui.isDark()) {
+            // The logo artwork is made for light backgrounds.
+            logo.setBackground(Ui.rounded(android.graphics.Color.WHITE, Ui.dp(activity, 20)));
+            logo.setPadding(Ui.dp(activity, 16), Ui.dp(activity, 12), Ui.dp(activity, 16), Ui.dp(activity, 12));
+        }
         LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(Ui.dp(activity, 190), -2);
         logoParams.topMargin = Ui.dp(activity, 20);
         parent.addView(logo, logoParams);
@@ -139,6 +144,6 @@ public class LoginActivity extends BaseActivity {
     }
 
     static String deviceName() {
-        return (Build.MANUFACTURER + " " + Build.MODEL).trim();
+        return co.ke.bremac.posapp.api.ApiClient.deviceName();
     }
 }

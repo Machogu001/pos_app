@@ -422,7 +422,7 @@ public class PosActivity extends BaseActivity {
     }
 
     private TextView stepButton(String label) {
-        TextView button = Ui.text(this, label, 20, Ui.PRIMARY_DARK, Typeface.BOLD);
+        TextView button = Ui.text(this, label, 20, Ui.PRIMARY_TEXT, Typeface.BOLD);
         button.setGravity(Gravity.CENTER);
         button.setBackground(Ui.ripple(null, Ui.withAlpha(Ui.PRIMARY, 0.18f), Ui.dp(this, 12)));
         button.setClickable(true);

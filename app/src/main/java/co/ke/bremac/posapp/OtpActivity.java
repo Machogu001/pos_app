@@ -55,7 +55,7 @@ public class OtpActivity extends BaseActivity {
                 "We sent a 6-digit code by " + method + " to " + otpData.optString("delivery_target"));
 
         if (notice != null) {
-            content.addView(Ui.banner(this, notice, Ui.PRIMARY_DARK, Ui.PRIMARY_SOFT), Ui.params(this, -1, -2, 20));
+            content.addView(Ui.banner(this, notice, Ui.PRIMARY_TEXT, Ui.PRIMARY_SOFT), Ui.params(this, -1, -2, 20));
         }
 
         LinearLayout form = Ui.card(this);

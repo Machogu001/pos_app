@@ -1,5 +1,9 @@
 package co.ke.bremac.posapp.api;
 
+import android.os.Build;
+
+import co.ke.bremac.posapp.BuildConfig;
+
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -26,6 +30,20 @@ public class ApiClient {
         this.tokenProvider = tokenProvider;
     }
 
+    /** Phone maker and model, e.g. "Samsung SM-A515F"; shown in the website's activity log. */
+    public static String deviceName() {
+        String name = ((Build.MANUFACTURER == null ? "" : Build.MANUFACTURER) + " "
+                + (Build.MODEL == null ? "" : Build.MODEL)).trim();
+        // HTTP header values must be plain ASCII.
+        name = name.replaceAll("[^\\x20-\\x7E]", "").trim();
+        return name.isEmpty() ? "Android device" : name;
+    }
+
+    /** Identifies the app (and device) to the server, e.g. "BreMac360App/2.8.0 (Android 15; Google Pixel 6)". */
+    public static String appIdentity() {
+        return "BreMac360App/" + BuildConfig.VERSION_NAME + " (Android " + Build.VERSION.RELEASE + "; " + deviceName() + ")";
+    }
+
     public JSONObject request(String method, String path, JSONObject body, boolean auth) throws Exception {
         URL url = new URL(server + "/api/mobile/v1" + path);
         if (!"https".equalsIgnoreCase(url.getProtocol())) {
@@ -36,6 +54,8 @@ public class ApiClient {
         connection.setReadTimeout(30000);
         connection.setRequestMethod(method);
         connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("User-Agent", appIdentity());
+        connection.setRequestProperty("X-Device-Name", deviceName());
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         if (auth) {
             String bearer = "Bearer " + tokenProvider.token();
