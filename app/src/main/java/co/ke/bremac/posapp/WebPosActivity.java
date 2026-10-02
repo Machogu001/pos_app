@@ -1,6 +1,7 @@
 package co.ke.bremac.posapp;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -8,12 +9,15 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.print.PrintAttributes;
 import android.print.PrintManager;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -27,6 +31,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import org.json.JSONObject;
 
@@ -46,6 +52,38 @@ public class WebPosActivity extends BaseActivity {
     private TextView errorMessage;
     private String serverHost;
     private boolean signingIn;
+    private ValueCallback<Uri[]> pendingUpload;
+    private final ActivityResultLauncher<Intent> fileChooser = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (pendingUpload != null) {
+                    pendingUpload.onReceiveValue(
+                            WebChromeClient.FileChooserParams.parseResult(result.getResultCode(), result.getData()));
+                    pendingUpload = null;
+                }
+            });
+
+    /** Saves website exports (reports, PDFs, spreadsheets) to Downloads using the signed-in session. */
+    private void download(String url, String userAgent, String contentDisposition, String mimeType, long length) {
+        Uri uri = Uri.parse(url);
+        if (!isOwnServer(uri)) {
+            return;
+        }
+        String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(uri)
+                    .setMimeType(mimeType)
+                    .addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url))
+                    .addRequestHeader("User-Agent", userAgent)
+                    .setTitle(fileName)
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            manager.enqueue(request);
+            toast("Downloading " + fileName + "…");
+        } catch (RuntimeException exception) {
+            toast("Couldn't download this file on this phone.");
+        }
+    }
 
     @Override
     protected Chrome chrome() {
@@ -68,13 +106,26 @@ public class WebPosActivity extends BaseActivity {
         }
     }
 
+    /** Website destination requested from POST /web-session. */
+    protected String webTarget() {
+        return "pos";
+    }
+
+    protected String screenName() {
+        return "POS";
+    }
+
+    protected boolean allowed() {
+        return session.permissions.sellCreate;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!ensureAccess(session.permissions.sellCreate)) {
+        if (!ensureAccess(allowed())) {
             return;
         }
-        setScreenTitle("POS");
+        setScreenTitle(screenName());
         serverHost = Uri.parse(session.serverUrl).getHost();
         buildViews();
         addAppBarAction(R.drawable.ic_refresh, "Reload", view -> reload());
@@ -124,7 +175,25 @@ public class WebPosActivity extends BaseActivity {
                 progress.setProgress(newProgress);
                 Ui.visible(progress, newProgress < 100);
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
+                if (pendingUpload != null) {
+                    pendingUpload.onReceiveValue(null);
+                }
+                pendingUpload = callback;
+                try {
+                    fileChooser.launch(params.createIntent());
+                } catch (ActivityNotFoundException exception) {
+                    pendingUpload = null;
+                    toast("No app is available to pick a file.");
+                    return false;
+                }
+                return true;
+            }
         });
+        webView.setDownloadListener(this::download);
         frame.addView(webView, new FrameLayout.LayoutParams(-1, -1));
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -139,7 +208,7 @@ public class WebPosActivity extends BaseActivity {
         int pad = Ui.dp(this, 32);
         errorPanel.setPadding(pad, pad, pad, pad);
         errorPanel.addView(Ui.iconBubble(this, R.drawable.ic_pos, Ui.PRIMARY, Ui.PRIMARY_SOFT, 64));
-        TextView heading = Ui.text(this, "Couldn't open the POS", 18, Ui.INK, Typeface.BOLD);
+        TextView heading = Ui.text(this, "Couldn't open " + screenName(), 18, Ui.INK, Typeface.BOLD);
         heading.setGravity(Gravity.CENTER);
         errorPanel.addView(heading, Ui.params(this, -2, -2, 16));
         errorMessage = Ui.text(this, "", 14, Ui.MUTED, Typeface.NORMAL);
@@ -153,18 +222,18 @@ public class WebPosActivity extends BaseActivity {
     }
 
     /** Requests a fresh single-use sign-in link and loads the POS with it. */
-    private void openPos() {
+    protected void openPos() {
         if (signingIn) {
             return;
         }
         signingIn = true;
         Ui.visible(errorPanel, false);
-        runAsync("Opening POS…", () -> session.api().webSession("pos"), result -> {
+        runAsync("Opening " + screenName() + "…", () -> session.api().webSession(webTarget()), result -> {
             signingIn = false;
             JSONObject data = result.optJSONObject("data");
             String url = data == null ? "" : data.optString("url", "");
             if (!isOwnServer(Uri.parse(url))) {
-                showLoadError("The server did not return a valid POS link. Ask the administrator to update the "
+                showLoadError("The server did not return a valid sign-in link. Ask the administrator to update the "
                         + "server (git pull).");
                 return;
             }
@@ -191,12 +260,12 @@ public class WebPosActivity extends BaseActivity {
                 return;
             }
             if (apiException.httpStatus == 404) {
-                showLoadError("This server does not support opening the POS from the app yet. Ask the "
+                showLoadError("This server does not support opening the website from the app yet. Ask the "
                         + "administrator to update the server (git pull).");
                 return;
             }
             if (apiException.httpStatus == 403) {
-                showLoadError("Your account does not have permission to use the POS.");
+                showLoadError("Your account does not have permission to open this.");
                 return;
             }
         }
@@ -244,7 +313,7 @@ public class WebPosActivity extends BaseActivity {
             }
             if (isLoginPage(uri)) {
                 // The web session ended (signed out or expired); sign in again with the app token.
-                showLoadError("Your POS session ended. Tap \"Try again\" to reopen it.");
+                showLoadError("Your website session ended. Tap \"Try again\" to reopen it.");
                 return;
             }
             // Android WebView ignores window.print(); route receipt printing to the system print dialog.
@@ -288,6 +357,10 @@ public class WebPosActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        if (pendingUpload != null) {
+            pendingUpload.onReceiveValue(null);
+            pendingUpload = null;
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.removeJavascriptInterface(PRINT_BRIDGE);

@@ -7,6 +7,7 @@ import org.json.JSONObject;
  * "not allowed" so features stay hidden until the server confirms access.
  */
 public class Permissions {
+    public final boolean isAdmin;
     public final boolean sellCreate;
     public final boolean viewSales;
     public final boolean viewProducts;
@@ -19,6 +20,7 @@ public class Permissions {
 
     public Permissions(JSONObject object) {
         JSONObject json = object == null ? new JSONObject() : object;
+        isAdmin = json.optBoolean("is_admin", false);
         sellCreate = json.optBoolean("sell_create", false);
         viewSales = json.optBoolean("view_sales", false);
         viewProducts = json.optBoolean("view_products", false);

@@ -101,9 +101,7 @@ public class HomeActivity extends BaseActivity {
         background.setCornerRadius(Ui.dp(this, 20));
         hero.setBackground(background);
 
-        String name = session.user.fullName == null || session.user.fullName.trim().isEmpty()
-                ? session.user.username
-                : session.user.fullName.trim().split("\\s+")[0];
+        String name = session.user.greetingName();
         hero.addView(Ui.text(this, Formats.greeting() + ",", 14, Ui.withAlpha(Color.WHITE, 0.8f), Typeface.NORMAL));
         hero.addView(Ui.text(this, name == null || name.isEmpty() ? "Welcome" : name, 24, Color.WHITE,
                 Typeface.BOLD), Ui.params(this, -2, -2, 2));
@@ -113,6 +111,12 @@ public class HomeActivity extends BaseActivity {
             Button openPos = Ui.button(this, "Open POS", Color.WHITE, Ui.PRIMARY_DARK, 0);
             openPos.setOnClickListener(view -> startActivity(new Intent(this, WebPosActivity.class)));
             hero.addView(openPos, Ui.params(this, -1, 50, 16));
+        }
+        if (session.permissions.isAdmin) {
+            Button fullSystem = Ui.button(this, "Full system", Ui.withAlpha(Color.WHITE, 0.14f), Color.WHITE,
+                    Ui.withAlpha(Color.WHITE, 0.6f));
+            fullSystem.setOnClickListener(view -> startActivity(new Intent(this, WebSystemActivity.class)));
+            hero.addView(fullSystem, Ui.params(this, -1, 50, 10));
         }
         content.addView(hero, new LinearLayout.LayoutParams(-1, -2));
     }

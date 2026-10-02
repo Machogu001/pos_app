@@ -11,6 +11,10 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".WebSystemActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".WebPosActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:windowSoftInputMode="adjustResize" />

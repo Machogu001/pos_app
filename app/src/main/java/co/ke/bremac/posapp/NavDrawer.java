@@ -20,7 +20,7 @@ import co.ke.bremac.posapp.ui.Ui;
 
 /** Slide-out menu listing only the screens the signed-in user's role allows. */
 public final class NavDrawer {
-    public enum Item { HOME, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
+    public enum Item { HOME, WEB_SYSTEM, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
 
     private final BaseActivity activity;
     private final ScrollView root;
@@ -79,6 +79,9 @@ public final class NavDrawer {
         String name = session.user.fullName == null || session.user.fullName.trim().isEmpty()
                 ? session.user.username
                 : session.user.fullName;
+        String avatarName = !session.user.title.isEmpty() && name.startsWith(session.user.title + " ")
+                ? name.substring(session.user.title.length() + 1)
+                : name;
 
         ImageView logo = new ImageView(activity);
         logo.setImageResource(R.drawable.logo_horizontal);
@@ -88,7 +91,7 @@ public final class NavDrawer {
         header.addView(logo, new LinearLayout.LayoutParams(-2, Ui.dp(activity, 44)));
 
         LinearLayout userRow = Ui.row(activity);
-        TextView avatar = Ui.avatar(activity, name, 44, Color.WHITE, Ui.PRIMARY);
+        TextView avatar = Ui.avatar(activity, avatarName, 44, Color.WHITE, Ui.PRIMARY);
         userRow.addView(avatar, new LinearLayout.LayoutParams(Ui.dp(activity, 44), Ui.dp(activity, 44)));
         LinearLayout who = Ui.column(activity);
         who.setPadding(Ui.dp(activity, 12), 0, 0, 0);
@@ -126,6 +129,9 @@ public final class NavDrawer {
         Permissions permissions = activity.session.permissions;
 
         addItem(Item.HOME, "Home", R.drawable.ic_dashboard, HomeActivity.class, current);
+        if (permissions.isAdmin) {
+            addItem(Item.WEB_SYSTEM, "Full system", R.drawable.ic_web, WebSystemActivity.class, current);
+        }
         if (permissions.sellCreate) {
             addItem(Item.WEB_POS, "POS", R.drawable.ic_pos, WebPosActivity.class, current);
             addItem(Item.POS, "Quick sale", R.drawable.ic_cart, PosActivity.class, current);
