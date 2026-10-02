@@ -48,6 +48,10 @@ public class PosApi {
     }
 
     /** Single-use link that signs this user into the website (e.g. the full POS screen). */
+    public JSONObject webMenu() throws Exception {
+        return client.request("GET", "/web-menu", null, true);
+    }
+
     public JSONObject webSession(String target) throws Exception {
         return webSession(target, null);
     }

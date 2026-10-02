@@ -27,6 +27,7 @@ import java.util.List;
 public class HomeActivity extends BaseActivity {
     private static final String[] PERIODS = {"today", "week", "month"};
     private static final String[] PERIOD_LABELS = {"Today", "This week", "This month"};
+    private static final String WEB_MENU_KEY = "_web_menu";
 
     private String period = "today";
     private JSONObject dashboard;
@@ -55,10 +56,30 @@ public class HomeActivity extends BaseActivity {
         if (!session.isSignedIn()) {
             return;
         }
-        runAsync(showProgress ? "Loading your workspace…" : "", () -> session.api().me(), result -> {
+        runAsync(showProgress ? "Loading your workspace…" : "", () -> {
+            JSONObject me = session.api().me();
+            JSONObject profile = me.optJSONObject("data");
+            JSONObject permissions = profile == null ? null : profile.optJSONObject("permissions");
+            if (permissions != null && permissions.optBoolean("is_admin")) {
+                try {
+                    // The business system menu (Purchases, Products, Reports, …) for the app's drawer.
+                    JSONObject menu = session.api().webMenu().optJSONObject("data");
+                    if (menu != null && menu.optJSONArray("items") != null) {
+                        me.put(WEB_MENU_KEY, menu.optJSONArray("items"));
+                    }
+                } catch (Exception ignored) {
+                    // Older server or temporary error: keep the menu remembered from before.
+                }
+            }
+            return me;
+        }, result -> {
             JSONObject data = result.optJSONObject("data");
             if (data != null) {
                 session.applyMe(data);
+            }
+            JSONArray webMenu = result.optJSONArray(WEB_MENU_KEY);
+            if (webMenu != null && webMenu.length() > 0) {
+                session.saveWebMenu(webMenu);
             }
             refreshChrome();
             render();

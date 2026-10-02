@@ -219,7 +219,7 @@ public final class NavDrawer {
     private void renderWebMenu() {
         List<WebMenuItem> webMenu = activity.session.webMenu();
         if (webMenu.isEmpty()) {
-            // Not opened yet on this phone: the dashboard page sends the full menu for next time.
+            // Menu not loaded yet (or server not updated): offer the dashboard, which also sends the menu.
             String home = activity.session.serverUrl.replaceAll("/+$", "") + "/home";
             webMenu = Collections.singletonList(new WebMenuItem("Dashboard", home, Collections.emptyList()));
         }
