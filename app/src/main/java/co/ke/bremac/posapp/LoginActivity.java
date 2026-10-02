@@ -7,9 +7,12 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -127,7 +130,9 @@ public class LoginActivity extends BaseActivity {
         LinearLayout serverText = Ui.column(this);
         serverText.setPadding(Ui.dp(this, 10), 0, Ui.dp(this, 8), 0);
         serverText.addView(Ui.text(this, "SERVER", 11, Ui.MUTED, Typeface.BOLD));
-        String host = Uri.parse(session.serverUrl).getHost();
+        Uri serverUri = Uri.parse(session.serverUrl);
+        String host = serverUri.getHost() == null ? null
+                : serverUri.getHost() + (serverUri.getPort() > 0 ? ":" + serverUri.getPort() : "");
         TextView hostView = Ui.text(this, host == null ? session.serverUrl : host, 14, Ui.INK, Typeface.BOLD);
         hostView.setSingleLine(true);
         hostView.setEllipsize(TextUtils.TruncateAt.MIDDLE);
@@ -149,7 +154,7 @@ public class LoginActivity extends BaseActivity {
         password.setImeOptions(EditorInfo.IME_ACTION_DONE);
 
         form.addView(Ui.field(this, "USERNAME", username), Ui.params(this, -1, -2, 18));
-        form.addView(Ui.field(this, "PASSWORD", password), Ui.params(this, -1, -2, 16));
+        form.addView(Ui.field(this, "PASSWORD", withVisibilityToggle(password)), Ui.params(this, -1, -2, 16));
 
         Button signIn = Ui.primary(this, "Sign in");
         form.addView(signIn, Ui.params(this, -1, 52, 22));
@@ -164,6 +169,40 @@ public class LoginActivity extends BaseActivity {
         });
         username.requestFocus();
     }
+    /** Puts an eye button inside the password field to show or hide what was typed. */
+    private View withVisibilityToggle(EditText password) {
+        FrameLayout frame = new FrameLayout(this);
+        int buttonSize = Ui.dp(this, 48);
+        password.setPadding(password.getPaddingLeft(), password.getPaddingTop(),
+                buttonSize + Ui.dp(this, 4), password.getPaddingBottom());
+        frame.addView(password, new FrameLayout.LayoutParams(-1, -2));
+
+        ImageButton eye = new ImageButton(this);
+        eye.setBackground(Ui.ripple(null, Ui.withAlpha(Ui.PRIMARY, 0.15f), Ui.dp(this, 24)));
+        boolean[] visible = {false};
+        Runnable update = () -> {
+            eye.setImageDrawable(Ui.tinted(this,
+                    visible[0] ? R.drawable.ic_visibility_off : R.drawable.ic_visibility, Ui.MUTED));
+            eye.setContentDescription(visible[0] ? "Hide password" : "Show password");
+        };
+        update.run();
+        eye.setOnClickListener(view -> {
+            visible[0] = !visible[0];
+            int selection = password.getSelectionEnd();
+            password.setInputType(InputType.TYPE_CLASS_TEXT | (visible[0]
+                    ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                    : InputType.TYPE_TEXT_VARIATION_PASSWORD));
+            password.setTypeface(Typeface.DEFAULT);
+            password.setSelection(Math.max(0, Math.min(selection, password.length())));
+            update.run();
+        });
+        FrameLayout.LayoutParams eyeParams = new FrameLayout.LayoutParams(buttonSize, buttonSize,
+                Gravity.END | Gravity.CENTER_VERTICAL);
+        eyeParams.setMarginEnd(Ui.dp(this, 4));
+        frame.addView(eye, eyeParams);
+        return frame;
+    }
+
     /** Logo, app name and subtitle shared by the sign-in and verification screens. */
     static void addBrandHeader(BaseActivity activity, LinearLayout parent, String heading, String subtitle) {
         ImageView logo = new ImageView(activity);

@@ -1,6 +1,10 @@
 package co.ke.bremac.posapp;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -15,7 +19,17 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.auth.api.phone.SmsRetriever;
+import com.google.android.gms.common.api.CommonStatusCodes;
+import com.google.android.gms.common.api.Status;
+
 import co.ke.bremac.posapp.ui.Ui;
+import co.ke.bremac.posapp.util.OtpCode;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,6 +43,9 @@ public class OtpActivity extends BaseActivity {
     private EditText codeInput;
     private boolean verifying;
     private String lastSubmitted;
+    private BroadcastReceiver smsReceiver;
+    private final ActivityResultLauncher<Intent> smsConsentLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), this::onSmsConsentResult);
 
     @Override
     protected Chrome chrome() {
@@ -123,6 +140,78 @@ public class OtpActivity extends BaseActivity {
         emailButton.setOnClickListener(view -> resend("email"));
         startCooldown(otpData.optInt("resend_in"));
         code.requestFocus();
+        listenForSmsCode();
+    }
+
+    // ---- Reading the code from the SMS ------------------------------------------------------
+
+    /**
+     * Asks Google Play services to watch for the next SMS containing a code. When it arrives, Android
+     * shows "Allow BreMac360 POS to read this message?"; on Allow the code is filled in and verified.
+     * No SMS permission is needed.
+     */
+    private void listenForSmsCode() {
+        if (!"sms".equals(otpData.optString("delivery_method", "sms"))) {
+            return;
+        }
+        if (smsReceiver == null) {
+            smsReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    onSmsRetrieverResult(intent);
+                }
+            };
+            ContextCompat.registerReceiver(this, smsReceiver,
+                    new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION),
+                    SmsRetriever.SEND_PERMISSION, null, ContextCompat.RECEIVER_EXPORTED);
+        }
+        try {
+            SmsRetriever.getClient(this).startSmsUserConsent(null);
+        } catch (RuntimeException ignored) {
+            // Google Play services missing or outdated: the code can still be typed or picked from the keyboard.
+        }
+    }
+
+    private void onSmsRetrieverResult(Intent intent) {
+        Bundle extras = intent.getExtras();
+        if (extras == null || !SmsRetriever.SMS_RETRIEVED_ACTION.equals(intent.getAction())) {
+            return;
+        }
+        Status status = (Status) extras.get(SmsRetriever.EXTRA_STATUS);
+        if (status == null || status.getStatusCode() != CommonStatusCodes.SUCCESS) {
+            return;
+        }
+        Intent consent = extras.getParcelable(SmsRetriever.EXTRA_CONSENT_INTENT);
+        if (consent == null || !isPlayServicesConsent(consent)) {
+            return;
+        }
+        try {
+            smsConsentLauncher.launch(consent);
+        } catch (RuntimeException ignored) {
+            // Screen is closing; the user can still type the code.
+        }
+    }
+
+    /** Only launch the consent screen if it really belongs to Google Play services. */
+    private boolean isPlayServicesConsent(Intent consent) {
+        ComponentName target = consent.resolveActivity(getPackageManager());
+        int grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION;
+        return target != null && "com.google.android.gms".equals(target.getPackageName())
+                && (consent.getFlags() & grantFlags) == 0;
+    }
+
+    private void onSmsConsentResult(ActivityResult result) {
+        Intent data = result.getData();
+        if (result.getResultCode() != RESULT_OK || data == null || codeInput == null) {
+            return;
+        }
+        String code = OtpCode.extract(data.getStringExtra(SmsRetriever.EXTRA_SMS_MESSAGE));
+        if (code != null) {
+            // The text watcher submits it automatically.
+            codeInput.setText(code);
+            codeInput.setSelection(code.length());
+        }
     }
 
     private void verify(String code) {
@@ -206,6 +295,10 @@ public class OtpActivity extends BaseActivity {
     protected void onDestroy() {
         if (resendTimer != null) {
             resendTimer.cancel();
+        }
+        if (smsReceiver != null) {
+            unregisterReceiver(smsReceiver);
+            smsReceiver = null;
         }
         super.onDestroy();
     }
