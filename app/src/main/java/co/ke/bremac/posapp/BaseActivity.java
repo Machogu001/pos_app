@@ -302,6 +302,20 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     // ---- Navigation & access ----------------------------------------------------------------
 
+    /** The slide-out menu, or null on screens without one. */
+    protected NavDrawer navDrawer() {
+        return navDrawer;
+    }
+
+    /** Closes the slide-out menu if it is open; returns true when it was. */
+    protected boolean closeDrawerIfOpen() {
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        }
+        return false;
+    }
+
     /** Opens a drawer destination, keeping Home as the single root of the back stack. */
     void openTopLevel(Class<? extends Activity> target) {
         if (drawerLayout != null) {

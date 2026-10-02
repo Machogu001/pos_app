@@ -15,12 +15,24 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 import co.ke.bremac.posapp.data.Permissions;
+import co.ke.bremac.posapp.data.WebMenuItem;
 import co.ke.bremac.posapp.ui.Ui;
 
 /** Slide-out menu listing only the screens the signed-in user's role allows. */
 public final class NavDrawer {
     public enum Item { HOME, WEB_SYSTEM, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
+
+    /** Opens a website page inside the current screen. */
+    public interface WebMenuListener {
+        void open(String url);
+    }
 
     private final BaseActivity activity;
     private final ScrollView root;
@@ -29,6 +41,11 @@ public final class NavDrawer {
     private int topInset;
     private int bottomInset;
     private int startInset;
+    private Item current;
+    private List<WebMenuItem> webMenu = Collections.emptyList();
+    private String webCurrentPath;
+    private WebMenuListener webListener;
+    private final Set<String> expandedGroups = new HashSet<>();
 
     NavDrawer(BaseActivity activity) {
         this.activity = activity;
@@ -63,8 +80,42 @@ public final class NavDrawer {
     }
 
     void render(Item current) {
+        this.current = current;
         renderHeader();
         renderMenu(current);
+    }
+
+    /** Shows the website's own menu (sent by the server) below the app's screens. */
+    void setWebMenu(List<WebMenuItem> items, String currentUrl, WebMenuListener listener) {
+        webMenu = items == null ? Collections.<WebMenuItem>emptyList() : items;
+        webListener = listener;
+        webCurrentPath = normalizedPath(currentUrl);
+        for (WebMenuItem item : webMenu) {
+            for (WebMenuItem child : item.children) {
+                if (isCurrentWebPage(child)) {
+                    expandedGroups.add(item.title);
+                }
+            }
+        }
+        renderMenu(current);
+    }
+
+    private static String normalizedPath(String url) {
+        if (url == null) {
+            return null;
+        }
+        String path = Uri.parse(url).getPath();
+        if (path == null) {
+            return null;
+        }
+        while (path.length() > 1 && path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        return path;
+    }
+
+    private boolean isCurrentWebPage(WebMenuItem item) {
+        return item.url != null && webCurrentPath != null && webCurrentPath.equals(normalizedPath(item.url));
     }
 
     private void applyPadding() {
@@ -153,6 +204,7 @@ public final class NavDrawer {
             loading.setPadding(Ui.dp(activity, 28), Ui.dp(activity, 8), Ui.dp(activity, 16), Ui.dp(activity, 8));
             menu.addView(loading);
         }
+        renderWebMenu();
 
         View divider = Ui.divider(activity);
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, Math.max(1, Ui.dp(activity, 1)));
@@ -168,6 +220,90 @@ public final class NavDrawer {
                 11, Ui.MUTED, Typeface.NORMAL);
         footer.setPadding(Ui.dp(activity, 28), Ui.dp(activity, 16), Ui.dp(activity, 16), 0);
         menu.addView(footer);
+    }
+
+    private void renderWebMenu() {
+        if (webMenu.isEmpty() || webListener == null) {
+            return;
+        }
+        TextView heading = Ui.text(activity, "BUSINESS SYSTEM", 11, Ui.MUTED, Typeface.BOLD);
+        heading.setLetterSpacing(0.08f);
+        heading.setPadding(Ui.dp(activity, 28), Ui.dp(activity, 18), Ui.dp(activity, 16), Ui.dp(activity, 6));
+        menu.addView(heading);
+
+        for (WebMenuItem item : webMenu) {
+            if (!item.isGroup()) {
+                boolean selected = isCurrentWebPage(item);
+                LinearLayout row = row(item.title, iconFor(item.title), selected ? Ui.PRIMARY : Ui.MUTED,
+                        selected ? Ui.PRIMARY_DARK : Ui.INK, selected);
+                row.setOnClickListener(view -> webListener.open(item.url));
+                menu.addView(row, rowParams());
+                continue;
+            }
+            boolean expanded = expandedGroups.contains(item.title);
+            boolean childSelected = false;
+            for (WebMenuItem child : item.children) {
+                childSelected |= isCurrentWebPage(child);
+            }
+            LinearLayout group = row(item.title, iconFor(item.title), childSelected ? Ui.PRIMARY : Ui.MUTED,
+                    childSelected ? Ui.PRIMARY_DARK : Ui.INK, false);
+            ImageView chevron = Ui.icon(activity, R.drawable.ic_expand_more, Ui.MUTED);
+            chevron.setRotation(expanded ? 0f : -90f);
+            group.addView(chevron, new LinearLayout.LayoutParams(Ui.dp(activity, 20), Ui.dp(activity, 20)));
+            group.setOnClickListener(view -> {
+                if (!expandedGroups.remove(item.title)) {
+                    expandedGroups.add(item.title);
+                }
+                renderMenu(current);
+            });
+            menu.addView(group, rowParams());
+            if (!expanded) {
+                continue;
+            }
+            for (WebMenuItem child : item.children) {
+                boolean selected = isCurrentWebPage(child);
+                LinearLayout row = Ui.row(activity);
+                row.setPadding(Ui.dp(activity, 54), 0, Ui.dp(activity, 16), 0);
+                row.setBackground(selected
+                        ? Ui.rounded(Ui.PRIMARY_SOFT, Ui.dp(activity, 22))
+                        : Ui.ripple(null, Ui.withAlpha(Ui.PRIMARY, 0.10f), Ui.dp(activity, 22)));
+                row.setClickable(true);
+                row.setFocusable(true);
+                TextView text = Ui.text(activity, child.title, 14, selected ? Ui.PRIMARY_DARK : Ui.INK,
+                        selected ? Typeface.BOLD : Typeface.NORMAL);
+                text.setSingleLine(true);
+                text.setEllipsize(TextUtils.TruncateAt.END);
+                row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
+                row.setOnClickListener(view -> webListener.open(child.url));
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, Ui.dp(activity, 42));
+                params.setMargins(Ui.dp(activity, 12), 0, Ui.dp(activity, 12), 0);
+                menu.addView(row, params);
+            }
+        }
+    }
+
+    /** Picks a matching app icon for a website menu entry by its (English) title. */
+    private static int iconFor(String title) {
+        String t = title.toLowerCase(Locale.ROOT);
+        if (t.contains("home") || t.contains("dashboard")) return R.drawable.ic_dashboard;
+        if (t.contains("pos")) return R.drawable.ic_pos;
+        if (t.contains("report")) return R.drawable.ic_reports;
+        if (t.contains("user") || t.contains("role") || t.contains("agent")) return R.drawable.ic_person;
+        if (t.contains("contact") || t.contains("customer") || t.contains("supplier") || t.contains("crm")
+                || t.contains("hrm") || t.contains("essential") || t.contains("employee")) return R.drawable.ic_people;
+        if (t.contains("product") || t.contains("stock") || t.contains("inventory") || t.contains("manufactur"))
+            return R.drawable.ic_inventory;
+        if (t.contains("purchase") || t.contains("transfer") || t.contains("shipment") || t.contains("deliver"))
+            return R.drawable.ic_shipping;
+        if (t.contains("sell") || t.contains("sale") || t.contains("invoice") || t.contains("quotation"))
+            return R.drawable.ic_receipt;
+        if (t.contains("expense") || t.contains("payment") || t.contains("account") || t.contains("bank")
+                || t.contains("finance")) return R.drawable.ic_wallet;
+        if (t.contains("register") || t.contains("cash")) return R.drawable.ic_register;
+        if (t.contains("setting") || t.contains("business") || t.contains("tax") || t.contains("printer"))
+            return R.drawable.ic_tune;
+        if (t.contains("subscription") || t.contains("website") || t.contains("superadmin")) return R.drawable.ic_web;
+        return R.drawable.ic_folder;
     }
 
     private void addItem(Item item, String label, int icon, Class<? extends Activity> target, Item current) {
@@ -189,6 +325,8 @@ public final class NavDrawer {
         row.addView(Ui.icon(activity, icon, iconTint),
                 new LinearLayout.LayoutParams(Ui.dp(activity, 22), Ui.dp(activity, 22)));
         TextView text = Ui.text(activity, label, 15, textColor, selected ? Typeface.BOLD : Typeface.NORMAL);
+        text.setSingleLine(true);
+        text.setEllipsize(TextUtils.TruncateAt.END);
         text.setPadding(Ui.dp(activity, 16), 0, 0, 0);
         row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
         return row;

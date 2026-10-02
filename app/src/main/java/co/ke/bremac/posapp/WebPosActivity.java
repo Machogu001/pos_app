@@ -132,6 +132,9 @@ public class WebPosActivity extends BaseActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                if (closeDrawerIfOpen()) {
+                    return;
+                }
                 if (webView != null && webView.canGoBack() && errorPanel.getVisibility() != View.VISIBLE) {
                     webView.goBack();
                 } else {
@@ -165,6 +168,16 @@ public class WebPosActivity extends BaseActivity {
         settings.setLoadWithOverviewMode(true);
         settings.setSupportMultipleWindows(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        // Lets the server render its in-app layout (no website header/sidebar; menu handed to the app).
+        settings.setUserAgentString(settings.getUserAgentString() + " BreMac360App/" + BuildConfig.VERSION_NAME);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setOnLongClickListener(view -> {
+            // No browser-style link/image previews on long press; text fields keep copy & paste.
+            int type = webView.getHitTestResult().getType();
+            return type == WebView.HitTestResult.SRC_ANCHOR_TYPE
+                    || type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+                    || type == WebView.HitTestResult.IMAGE_TYPE;
+        });
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.addJavascriptInterface(new PrintBridge(), PRINT_BRIDGE);
@@ -174,6 +187,11 @@ public class WebPosActivity extends BaseActivity {
             public void onProgressChanged(WebView view, int newProgress) {
                 progress.setProgress(newProgress);
                 Ui.visible(progress, newProgress < 100);
+            }
+
+            @Override
+            public void onReceivedTitle(WebView view, String title) {
+                onWebTitle(title);
             }
 
             @Override
@@ -280,7 +298,28 @@ public class WebPosActivity extends BaseActivity {
         Ui.visible(progress, false);
     }
 
-    private boolean isOwnServer(Uri uri) {
+    protected WebView webView() {
+        return webView;
+    }
+
+    /** Loads a page of the signed-in website in this screen. */
+    protected void loadWebPage(String url) {
+        if (webView == null || url == null || !isOwnServer(Uri.parse(url))) {
+            return;
+        }
+        Ui.visible(errorPanel, false);
+        webView.loadUrl(url);
+    }
+
+    /** Called with the website's page title. */
+    protected void onWebTitle(String title) {
+    }
+
+    /** Called after a page of the website has finished loading. */
+    protected void onWebPageFinished(WebView view, String url) {
+    }
+
+    protected boolean isOwnServer(Uri uri) {
         return uri != null && "https".equalsIgnoreCase(uri.getScheme())
                 && serverHost != null && serverHost.equalsIgnoreCase(uri.getHost());
     }
@@ -319,6 +358,7 @@ public class WebPosActivity extends BaseActivity {
             // Android WebView ignores window.print(); route receipt printing to the system print dialog.
             view.evaluateJavascript("window.print=function(){" + PRINT_BRIDGE + ".print(document.title||'Receipt');};",
                     null);
+            onWebPageFinished(view, url);
         }
 
         @Override
