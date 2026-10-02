@@ -580,4 +580,20 @@ public class PosActivity extends BaseActivity {
         }
         super.onDestroy();
     }
+
+    @Override
+    protected boolean canPullToRefresh() {
+        return true;
+    }
+
+    @Override
+    protected void onPullToRefresh() {
+        loadPaymentMethods();
+        if (!session.cart.lines.isEmpty()) {
+            repriceCart();
+        }
+        if (!lastSearch.trim().isEmpty()) {
+            searchProducts(lastSearch, true);
+        }
+    }
 }

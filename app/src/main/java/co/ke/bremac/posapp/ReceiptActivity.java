@@ -99,4 +99,9 @@ public class ReceiptActivity extends BaseActivity {
         }
         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
+
+    @Override
+    protected boolean allowSwipeForward() {
+        return false;
+    }
 }

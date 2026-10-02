@@ -96,4 +96,14 @@ public class RegisterActivity extends BaseActivity {
         }
         return "";
     }
+
+    @Override
+    protected boolean canPullToRefresh() {
+        return true;
+    }
+
+    @Override
+    protected void onPullToRefresh() {
+        loadMeForRegister(this::render);
+    }
 }

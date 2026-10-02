@@ -165,4 +165,14 @@ public class CustomersActivity extends BaseActivity {
         }
         super.onDestroy();
     }
+
+    @Override
+    protected boolean canPullToRefresh() {
+        return true;
+    }
+
+    @Override
+    protected void onPullToRefresh() {
+        load(true);
+    }
 }

@@ -4,8 +4,10 @@ import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -24,6 +26,9 @@ public class OtpActivity extends BaseActivity {
     private Button smsButton;
     private Button emailButton;
     private TextView resendHint;
+    private EditText codeInput;
+    private boolean verifying;
+    private String lastSubmitted;
 
     @Override
     protected Chrome chrome() {
@@ -63,6 +68,26 @@ public class OtpActivity extends BaseActivity {
         code.setLetterSpacing(0.5f);
         code.setTypeface(Typeface.DEFAULT_BOLD);
         code.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        // Lets the keyboard offer the code from the SMS, and submits as soon as 6 digits are entered.
+        code.setAutofillHints("smsOTPCode");
+        code.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence value, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence value, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable value) {
+                String digits = value.toString().trim();
+                if (digits.length() == 6 && digits.matches("\\d{6}") && !digits.equals(lastSubmitted)) {
+                    verify(digits);
+                }
+            }
+        });
+        codeInput = code;
         form.addView(Ui.field(this, "VERIFICATION CODE", code));
 
         Button verify = Ui.primary(this, "Verify and continue");
@@ -105,9 +130,15 @@ public class OtpActivity extends BaseActivity {
             showError("Enter the 6-digit code.");
             return;
         }
+        if (verifying) {
+            return;
+        }
+        verifying = true;
+        lastSubmitted = code.trim();
         runAsync("Verifying…",
                 () -> session.api().verifyOtp(otpData.optString("otp_session"), code.trim(), LoginActivity.deviceName()),
                 result -> {
+                    verifying = false;
                     JSONObject data = result.optJSONObject("data");
                     session.saveToken(data.optString("token"));
                     Intent intent = new Intent(this, HomeActivity.class);
@@ -115,6 +146,19 @@ public class OtpActivity extends BaseActivity {
                     startActivity(intent);
                     finish();
                 });
+    }
+
+    @Override
+    protected void handleError(Exception exception) {
+        boolean wasVerifying = verifying;
+        verifying = false;
+        // Wrong or failed code: clear it so the next code typed (or pasted) is submitted automatically.
+        if (wasVerifying && codeInput != null) {
+            codeInput.setText("");
+            codeInput.requestFocus();
+            lastSubmitted = null;
+        }
+        super.handleError(exception);
     }
 
     private void resend(String method) {

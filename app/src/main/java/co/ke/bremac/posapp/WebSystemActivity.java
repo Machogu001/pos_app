@@ -45,6 +45,11 @@ public class WebSystemActivity extends WebPosActivity {
         return session.permissions.isAdmin;
     }
 
+    @Override
+    protected boolean canPullToRefresh() {
+        return true;
+    }
+
     /** Page to open after signing in: the page on screen (when re-signing in) or the menu item tapped. */
     @Override
     protected String webPath() {

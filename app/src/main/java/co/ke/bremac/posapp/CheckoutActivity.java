@@ -485,4 +485,9 @@ public class CheckoutActivity extends BaseActivity {
         }
         super.onDestroy();
     }
+
+    @Override
+    protected boolean allowSwipeForward() {
+        return false;
+    }
 }

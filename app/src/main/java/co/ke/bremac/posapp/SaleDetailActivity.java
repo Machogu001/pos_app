@@ -35,10 +35,26 @@ public class SaleDetailActivity extends BaseActivity {
             return;
         }
         setScreenTitle("Sale details");
-        int saleId = getIntent().getIntExtra(EXTRA_ID, 0);
-        runAsync("Loading sale…",
+        saleId = getIntent().getIntExtra(EXTRA_ID, 0);
+        load("Loading sale…");
+    }
+
+    private int saleId;
+
+    private void load(String message) {
+        runAsync(message,
                 () -> session.api().sale(saleId),
                 result -> render(Sale.fromJson(result.optJSONObject("data"))));
+    }
+
+    @Override
+    protected boolean canPullToRefresh() {
+        return true;
+    }
+
+    @Override
+    protected void onPullToRefresh() {
+        load("");
     }
 
     private void render(Sale sale) {

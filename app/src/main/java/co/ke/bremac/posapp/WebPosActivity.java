@@ -45,6 +45,27 @@ import co.ke.bremac.posapp.ui.Ui;
  */
 public class WebPosActivity extends BaseActivity {
     private static final String PRINT_BRIDGE = "BreMacPrint";
+    private static final String GESTURE_BRIDGE = "BreMacGestures";
+    /**
+     * Reports, for the element being touched, whether it scrolls sideways (e.g. a wide table, so a
+     * sideways swipe scrolls it instead of navigating) and whether its scroll area is scrolled down
+     * (so pulling down scrolls the page instead of refreshing it).
+     */
+    private static final String GESTURE_SCRIPT = "(function(){if(window.__bremacGestures)return;"
+            + "window.__bremacGestures=1;"
+            + "function wide(el){for(;el&&el.nodeType===1;el=el.parentElement){var s=getComputedStyle(el);"
+            + "if((s.overflowX==='auto'||s.overflowX==='scroll')&&el.scrollWidth>el.clientWidth+2)return true;}"
+            + "return false;}"
+            + "function down(el){var r=document.scrollingElement;if(r&&r.scrollTop>0)return true;"
+            + "for(;el&&el.nodeType===1;el=el.parentElement){if(el.scrollTop>0)return true;}return false;}"
+            + "document.addEventListener('touchstart',function(e){try{" + GESTURE_BRIDGE
+            + ".touch(wide(e.target),down(e.target));}catch(x){}},{capture:true,passive:true});"
+            + "document.addEventListener('scroll',function(e){try{var t=e.target&&e.target.nodeType===1?e.target:"
+            + "document.scrollingElement;" + GESTURE_BRIDGE + ".scrolled(!!t&&t.scrollTop>0);}catch(x){}},"
+            + "{capture:true,passive:true});})();";
+
+    private volatile boolean touchInWideContent;
+    private volatile boolean webScrolledDown;
 
     private WebView webView;
     private ProgressBar progress;
@@ -143,7 +164,7 @@ public class WebPosActivity extends BaseActivity {
                 if (webView != null && webView.canGoBack() && errorPanel.getVisibility() != View.VISIBLE) {
                     webView.goBack();
                 } else {
-                    finish();
+                    finishByBack();
                 }
             }
         });
@@ -186,6 +207,7 @@ public class WebPosActivity extends BaseActivity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.addJavascriptInterface(new PrintBridge(), PRINT_BRIDGE);
+        webView.addJavascriptInterface(new GestureBridge(), GESTURE_BRIDGE);
         webView.setWebViewClient(new PosWebClient());
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -266,7 +288,7 @@ public class WebPosActivity extends BaseActivity {
         });
     }
 
-    private void reload() {
+    protected void reload() {
         String url = webView.getUrl();
         if (url == null || url.isEmpty() || errorPanel.getVisibility() == View.VISIBLE || isLoginPage(Uri.parse(url))) {
             openPos();
@@ -299,7 +321,41 @@ public class WebPosActivity extends BaseActivity {
                 ? "Check your internet connection and try again." : message);
     }
 
+    @Override
+    protected boolean contentCanScrollUp() {
+        return webView != null && (webView.getScrollY() > 0 || webScrolledDown);
+    }
+
+    @Override
+    protected void onPullToRefresh() {
+        reload();
+    }
+
+    @Override
+    protected boolean blocksSwipe(float rawX, float rawY, int direction) {
+        return touchInWideContent;
+    }
+
+    @Override
+    protected void onSwipeBack() {
+        if (webView != null && webView.canGoBack() && errorPanel.getVisibility() != View.VISIBLE) {
+            webView.goBack();
+        } else {
+            super.onSwipeBack();
+        }
+    }
+
+    @Override
+    protected void onSwipeForward() {
+        if (webView != null && webView.canGoForward() && errorPanel.getVisibility() != View.VISIBLE) {
+            webView.goForward();
+        } else {
+            super.onSwipeForward();
+        }
+    }
+
     private void showLoadError(String message) {
+        stopRefreshing();
         errorMessage.setText(message);
         Ui.visible(errorPanel, true);
         Ui.visible(progress, false);
@@ -353,6 +409,9 @@ public class WebPosActivity extends BaseActivity {
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            stopRefreshing();
+            webScrolledDown = false;
+            touchInWideContent = false;
             Uri uri = Uri.parse(url);
             if (!isOwnServer(uri)) {
                 return;
@@ -365,6 +424,7 @@ public class WebPosActivity extends BaseActivity {
             // Android WebView ignores window.print(); route receipt printing to the system print dialog.
             view.evaluateJavascript("window.print=function(){" + PRINT_BRIDGE + ".print(document.title||'Receipt');};",
                     null);
+            view.evaluateJavascript(GESTURE_SCRIPT, null);
             onWebPageFinished(view, url);
         }
 
@@ -373,6 +433,19 @@ public class WebPosActivity extends BaseActivity {
             if (request.isForMainFrame()) {
                 showLoadError("Couldn't reach the server (" + error.getDescription() + ").");
             }
+        }
+    }
+
+    private final class GestureBridge {
+        @JavascriptInterface
+        public void touch(boolean wideContent, boolean scrolledDown) {
+            touchInWideContent = wideContent;
+            webScrolledDown = scrolledDown;
+        }
+
+        @JavascriptInterface
+        public void scrolled(boolean scrolledDown) {
+            webScrolledDown = scrolledDown;
         }
     }
 
@@ -411,6 +484,7 @@ public class WebPosActivity extends BaseActivity {
         if (webView != null) {
             webView.stopLoading();
             webView.removeJavascriptInterface(PRINT_BRIDGE);
+            webView.removeJavascriptInterface(GESTURE_BRIDGE);
             webView.destroy();
             webView = null;
         }

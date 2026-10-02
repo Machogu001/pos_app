@@ -8,7 +8,10 @@ import android.graphics.Typeface;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -26,6 +29,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import co.ke.bremac.posapp.api.ApiException;
 import co.ke.bremac.posapp.ui.LoadingDialog;
@@ -64,6 +68,12 @@ public abstract class BaseActivity extends AppCompatActivity {
     private ExecutorService executor;
     private boolean destroyed;
     private final List<Future<?>> futures = new ArrayList<>();
+    private SwipeRefreshLayout refreshLayout;
+    private int pendingJobs;
+    private GestureDetector swipeDetector;
+    private boolean leavingByBack;
+    /** Last screen closed with Back; a right-to-left swipe reopens it (cleared by any other navigation). */
+    private static Intent forwardIntent;
 
     protected interface Job {
         JSONObject run() throws Exception;
@@ -99,7 +109,19 @@ public abstract class BaseActivity extends AppCompatActivity {
         session = AppSession.get(this);
         executor = Executors.newSingleThreadExecutor();
         loadingDialog = new LoadingDialog(this);
+        // Registered first so screen-specific back handling (drawer, web history) runs before it.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                leavingByBack = true;
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+            }
+        });
         buildShell();
+        if (chrome() != Chrome.NONE) {
+            installSwipeNavigation();
+        }
         if (chrome() != Chrome.NONE && !session.isSignedIn()) {
             goToLogin("Please sign in to continue.");
         }
@@ -123,15 +145,31 @@ public abstract class BaseActivity extends AppCompatActivity {
         }
 
         content = Ui.column(this);
+        View body;
         if (scrollable()) {
             scrollView = new ScrollView(this);
             scrollView.setFillViewport(true);
             scrollView.setClipToPadding(false);
             content.setPadding(Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 24));
             scrollView.addView(content, new ScrollView.LayoutParams(-1, -2));
-            main.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
+            body = scrollView;
         } else {
-            main.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
+            body = content;
+        }
+        if (canPullToRefresh()) {
+            refreshLayout = new SwipeRefreshLayout(this);
+            refreshLayout.setColorSchemeColors(Ui.PRIMARY, Ui.GREEN);
+            refreshLayout.addView(body, new ViewGroup.LayoutParams(-1, -1));
+            refreshLayout.setOnChildScrollUpCallback((parent, child) -> contentCanScrollUp());
+            refreshLayout.setOnRefreshListener(() -> {
+                onPullToRefresh();
+                if (pendingJobs == 0) {
+                    stopRefreshing();
+                }
+            });
+            main.addView(refreshLayout, new LinearLayout.LayoutParams(-1, 0, 1));
+        } else {
+            main.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         }
 
         bottomBar = Ui.column(this);
@@ -300,6 +338,175 @@ public abstract class BaseActivity extends AppCompatActivity {
         }
     }
 
+    // ---- Pull to refresh --------------------------------------------------------------------
+
+    /** Screens returning true get pull-down-to-refresh, calling {@link #onPullToRefresh()}. */
+    protected boolean canPullToRefresh() {
+        return false;
+    }
+
+    /** Reloads the screen's data. Jobs started with runAsync keep the refresh spinner until done. */
+    protected void onPullToRefresh() {
+    }
+
+    /** True while the content is not scrolled to the top (pulling down then scrolls instead). */
+    protected boolean contentCanScrollUp() {
+        return scrollView != null && scrollView.canScrollVertically(-1);
+    }
+
+    protected boolean isRefreshing() {
+        return refreshLayout != null && refreshLayout.isRefreshing();
+    }
+
+    protected void stopRefreshing() {
+        if (refreshLayout != null) {
+            refreshLayout.setRefreshing(false);
+        }
+    }
+
+    private void jobFinished() {
+        pendingJobs = Math.max(0, pendingJobs - 1);
+        if (pendingJobs == 0) {
+            stopRefreshing();
+        }
+    }
+
+    // ---- Swipe navigation -------------------------------------------------------------------
+
+    /** Left-to-right fling goes back, right-to-left goes forward. */
+    private void installSwipeNavigation() {
+        float density = getResources().getDisplayMetrics().density;
+        float minVelocity = 700 * density;
+        float edge = 28 * density;
+        swipeDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onFling(MotionEvent start, MotionEvent end, float velocityX, float velocityY) {
+                if (start == null || end == null || (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START))) {
+                    return false;
+                }
+                int width = getWindow().getDecorView().getWidth();
+                float dx = end.getRawX() - start.getRawX();
+                float dy = end.getRawY() - start.getRawY();
+                // Ignore edge swipes (menu drawer and system back gesture) and mostly-vertical scrolls.
+                if (start.getRawX() < edge || start.getRawX() > width - edge
+                        || Math.abs(dx) < width * 0.28f || Math.abs(dx) < Math.abs(dy) * 2
+                        || Math.abs(velocityX) < minVelocity) {
+                    return false;
+                }
+                int direction = dx > 0 ? -1 : 1;
+                if (scrollsHorizontally(getWindow().getDecorView(), start.getRawX(), start.getRawY(), direction)
+                        || blocksSwipe(start.getRawX(), start.getRawY(), direction)) {
+                    return false;
+                }
+                if (dx > 0) {
+                    onSwipeBack();
+                } else {
+                    onSwipeForward();
+                }
+                return true;
+            }
+        });
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (swipeDetector != null && swipeDetector.onTouchEvent(event)) {
+            // The gesture was a navigation swipe: cancel it for the views below so it is not also a tap.
+            MotionEvent cancel = MotionEvent.obtain(event);
+            cancel.setAction(MotionEvent.ACTION_CANCEL);
+            super.dispatchTouchEvent(cancel);
+            cancel.recycle();
+            return true;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    /** True when a view under the finger can itself scroll horizontally that way (e.g. a wide table). */
+    private static boolean scrollsHorizontally(View view, float rawX, float rawY, int direction) {
+        if (view.getVisibility() != View.VISIBLE) {
+            return false;
+        }
+        int[] location = new int[2];
+        view.getLocationOnScreen(location);
+        if (rawX < location[0] || rawX > location[0] + view.getWidth()
+                || rawY < location[1] || rawY > location[1] + view.getHeight()) {
+            return false;
+        }
+        if (view.canScrollHorizontally(direction)) {
+            return true;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                if (scrollsHorizontally(group.getChildAt(i), rawX, rawY, direction)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Lets screens with their own horizontal gestures (web pages) veto swipe navigation. */
+    protected boolean blocksSwipe(float rawX, float rawY, int direction) {
+        return false;
+    }
+
+    protected void onSwipeBack() {
+        if (this instanceof HomeActivity && drawerLayout != null) {
+            // Home is the first screen: going "back" would close the app, so show the menu instead.
+            drawerLayout.openDrawer(GravityCompat.START);
+            return;
+        }
+        getOnBackPressedDispatcher().onBackPressed();
+    }
+
+    protected void onSwipeForward() {
+        Intent next = forwardIntent;
+        if (next == null) {
+            return;
+        }
+        forwardIntent = null;
+        super.startActivity(next);
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
+    /** False for screens that must not be reopened by swiping forward (e.g. checkout). */
+    protected boolean allowSwipeForward() {
+        return chrome() != Chrome.NONE && !(this instanceof HomeActivity);
+    }
+
+    /** Closes the screen as a Back action, so it can be reopened by swiping forward. */
+    protected void finishByBack() {
+        leavingByBack = true;
+        finish();
+    }
+
+    @Override
+    public void finish() {
+        if (leavingByBack && allowSwipeForward() && !isTaskRoot()) {
+            forwardIntent = new Intent(getIntent()).setFlags(0);
+        }
+        super.finish();
+    }
+
+    @Override
+    public void startActivity(Intent intent) {
+        forwardIntent = null;
+        super.startActivity(intent);
+    }
+
+    @Override
+    public void startActivity(Intent intent, Bundle options) {
+        forwardIntent = null;
+        super.startActivity(intent, options);
+    }
+
+    @Override
+    public void startActivities(Intent[] intents) {
+        forwardIntent = null;
+        super.startActivities(intents);
+    }
+
     // ---- Navigation & access ----------------------------------------------------------------
 
     /** The slide-out menu, or null on screens without one. */
@@ -368,9 +575,11 @@ public abstract class BaseActivity extends AppCompatActivity {
     // ---- Async work -------------------------------------------------------------------------
 
     protected void runAsync(String message, Job job, Success success) {
-        if (message != null && !message.isEmpty()) {
+        // While pulling to refresh, the refresh spinner replaces the blocking progress dialog.
+        if (message != null && !message.isEmpty() && !isRefreshing()) {
             loadingDialog.show(message);
         }
+        pendingJobs++;
         Future<?> future = executor.submit(() -> {
             try {
                 JSONObject result = job.run();
@@ -380,11 +589,15 @@ public abstract class BaseActivity extends AppCompatActivity {
                         success.accept(result);
                     } catch (Exception exception) {
                         showError(exception.getMessage());
+                    } finally {
+                        // After success, so follow-up loads started there keep the refresh spinner.
+                        jobFinished();
                     }
                 });
             } catch (Exception exception) {
                 runOnUiThreadSafe(() -> {
                     loadingDialog.dismiss();
+                    jobFinished();
                     handleError(exception);
                 });
             }

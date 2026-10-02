@@ -20,8 +20,8 @@ android {
         applicationId = "co.ke.bremac.posapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.6.0"
+        versionCode = 9
+        versionName = "2.7.0"
     }
 
     signingConfigs {
@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.core:core:1.17.0")
     implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     }

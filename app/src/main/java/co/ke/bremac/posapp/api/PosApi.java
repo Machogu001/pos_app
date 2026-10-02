@@ -66,9 +66,16 @@ public class PosApi {
     }
 
     public JSONObject dashboard(String locationId, String period) throws Exception {
+        return dashboard(locationId, period, null, null);
+    }
+
+    /** {@code startDate}/{@code endDate} (yyyy-MM-dd, inclusive) are used with period "custom". */
+    public JSONObject dashboard(String locationId, String period, String startDate, String endDate) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("location_id", locationId);
         params.put("period", period);
+        params.put("start_date", startDate);
+        params.put("end_date", endDate);
         return client.request("GET", "/dashboard" + ApiClient.q(params), null, true);
     }
 
