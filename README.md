@@ -49,3 +49,17 @@ Pop-Location
 ```
 
 The debug APK is written to `app\build\outputs\apk\debug\app-debug.apk`.
+
+## Release build
+
+Signed builds need `keystore.properties` in the project root (never committed):
+
+```
+storeFile=D:/Myapps/pos_app_keys/bremac-pos-release.jks
+storePassword=...
+keyAlias=bremac-pos
+keyPassword=...
+```
+
+Then run `gradlew assembleRelease` (APK) or `gradlew bundleRelease` (Play Store AAB).
+Keep a backup of the keystore and its password: updates to an installed app must be signed with the same key.
