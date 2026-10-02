@@ -49,7 +49,16 @@ public class PosApi {
 
     /** Single-use link that signs this user into the website (e.g. the full POS screen). */
     public JSONObject webSession(String target) throws Exception {
-        return client.request("POST", "/web-session", new JSONObject().put("target", target), true);
+        return webSession(target, null);
+    }
+
+    /** {@code path} (e.g. "/reports/profit-loss") is the website page to open after signing in. */
+    public JSONObject webSession(String target, String path) throws Exception {
+        JSONObject body = new JSONObject().put("target", target);
+        if (path != null && !path.isEmpty()) {
+            body.put("path", path);
+        }
+        return client.request("POST", "/web-session", body, true);
     }
 
     public JSONObject dashboard(String locationId, String period) throws Exception {

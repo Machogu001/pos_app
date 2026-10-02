@@ -16,8 +16,9 @@ import co.ke.bremac.posapp.data.Permissions;
 import co.ke.bremac.posapp.data.Register;
 import co.ke.bremac.posapp.data.Sale;
 import co.ke.bremac.posapp.data.User;
+import co.ke.bremac.posapp.data.WebMenuItem;
 import co.ke.bremac.posapp.util.Money;
-
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.List;
 public class AppSession implements ApiClient.TokenProvider {
     private static final String PREFS = "pos_app";
     private static final String PROFILE = "profile_json";
+    private static final String WEB_MENU = "web_menu_json";
     private static AppSession instance;
     private boolean profileLoaded;
 
@@ -96,7 +98,8 @@ public class AppSession implements ApiClient.TokenProvider {
         selectedCustomer = null;
         lastSale = null;
         profileLoaded = false;
-        prefs.edit().remove(PROFILE).apply();
+        prefs.edit().remove(PROFILE).remove(WEB_MENU).apply();
+        webMenu = null;
         user = User.fromJson(null);
         business = Business.fromJson(null);
         permissions = new Permissions(null);
@@ -107,6 +110,31 @@ public class AppSession implements ApiClient.TokenProvider {
 
     public boolean isSignedIn() {
         return !serverUrl.isEmpty() && !token().isEmpty();
+    }
+
+    private List<WebMenuItem> webMenu;
+
+    /** The website's sidebar menu for this user, remembered from the last page opened in the app. */
+    public List<WebMenuItem> webMenu() {
+        if (webMenu == null) {
+            try {
+                webMenu = WebMenuItem.listFromJson(new JSONArray(prefs.getString(WEB_MENU, "[]")));
+            } catch (Exception exception) {
+                webMenu = new ArrayList<>();
+            }
+        }
+        return webMenu;
+    }
+
+    /** Stores the menu (JSON array); returns true when it changed. */
+    public boolean saveWebMenu(JSONArray menu) {
+        String json = menu.toString();
+        if (json.equals(prefs.getString(WEB_MENU, null))) {
+            return false;
+        }
+        prefs.edit().putString(WEB_MENU, json).apply();
+        webMenu = WebMenuItem.listFromJson(menu);
+        return true;
     }
 
     /** True once GET /me has been applied (now or in a previous app run). */

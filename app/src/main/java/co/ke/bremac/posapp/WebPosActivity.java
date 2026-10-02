@@ -115,6 +115,11 @@ public class WebPosActivity extends BaseActivity {
         return "POS";
     }
 
+    /** Website page to open after signing in (null for the target's default page). */
+    protected String webPath() {
+        return null;
+    }
+
     protected boolean allowed() {
         return session.permissions.sellCreate;
     }
@@ -246,7 +251,9 @@ public class WebPosActivity extends BaseActivity {
         }
         signingIn = true;
         Ui.visible(errorPanel, false);
-        runAsync("Opening " + screenName() + "…", () -> session.api().webSession(webTarget()), result -> {
+        String target = webTarget();
+        String path = webPath();
+        runAsync("Opening " + screenName() + "…", () -> session.api().webSession(target, path), result -> {
             signingIn = false;
             JSONObject data = result.optJSONObject("data");
             String url = data == null ? "" : data.optString("url", "");

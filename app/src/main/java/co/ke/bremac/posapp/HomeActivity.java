@@ -112,12 +112,6 @@ public class HomeActivity extends BaseActivity {
             openPos.setOnClickListener(view -> startActivity(new Intent(this, WebPosActivity.class)));
             hero.addView(openPos, Ui.params(this, -1, 50, 16));
         }
-        if (session.permissions.isAdmin) {
-            Button fullSystem = Ui.button(this, "Full system", Ui.withAlpha(Color.WHITE, 0.14f), Color.WHITE,
-                    Ui.withAlpha(Color.WHITE, 0.6f));
-            fullSystem.setOnClickListener(view -> startActivity(new Intent(this, WebSystemActivity.class)));
-            hero.addView(fullSystem, Ui.params(this, -1, 50, 10));
-        }
         content.addView(hero, new LinearLayout.LayoutParams(-1, -2));
     }
 

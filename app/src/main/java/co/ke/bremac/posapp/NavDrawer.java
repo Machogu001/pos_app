@@ -27,12 +27,8 @@ import co.ke.bremac.posapp.ui.Ui;
 
 /** Slide-out menu listing only the screens the signed-in user's role allows. */
 public final class NavDrawer {
-    public enum Item { HOME, WEB_SYSTEM, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
+    public enum Item { HOME, WEB_POS, POS, SALES, PRODUCTS, CUSTOMERS, REGISTER }
 
-    /** Opens a website page inside the current screen. */
-    public interface WebMenuListener {
-        void open(String url);
-    }
 
     private final BaseActivity activity;
     private final ScrollView root;
@@ -42,9 +38,7 @@ public final class NavDrawer {
     private int bottomInset;
     private int startInset;
     private Item current;
-    private List<WebMenuItem> webMenu = Collections.emptyList();
     private String webCurrentPath;
-    private WebMenuListener webListener;
     private final Set<String> expandedGroups = new HashSet<>();
 
     NavDrawer(BaseActivity activity) {
@@ -85,11 +79,13 @@ public final class NavDrawer {
         renderMenu(current);
     }
 
-    /** Shows the website's own menu (sent by the server) below the app's screens. */
-    void setWebMenu(List<WebMenuItem> items, String currentUrl, WebMenuListener listener) {
-        webMenu = items == null ? Collections.<WebMenuItem>emptyList() : items;
-        webListener = listener;
-        webCurrentPath = normalizedPath(currentUrl);
+    /** Highlights (and expands the group of) the website page shown on the current screen. */
+    private void trackWebPage(List<WebMenuItem> webMenu) {
+        String path = normalizedPath(activity.currentWebUrl());
+        if (path == null ? webCurrentPath == null : path.equals(webCurrentPath)) {
+            return;
+        }
+        webCurrentPath = path;
         for (WebMenuItem item : webMenu) {
             for (WebMenuItem child : item.children) {
                 if (isCurrentWebPage(child)) {
@@ -97,7 +93,6 @@ public final class NavDrawer {
                 }
             }
         }
-        renderMenu(current);
     }
 
     private static String normalizedPath(String url) {
@@ -180,9 +175,6 @@ public final class NavDrawer {
         Permissions permissions = activity.session.permissions;
 
         addItem(Item.HOME, "Home", R.drawable.ic_dashboard, HomeActivity.class, current);
-        if (permissions.isAdmin) {
-            addItem(Item.WEB_SYSTEM, "Full system", R.drawable.ic_web, WebSystemActivity.class, current);
-        }
         if (permissions.sellCreate) {
             addItem(Item.WEB_POS, "POS", R.drawable.ic_pos, WebPosActivity.class, current);
             addItem(Item.POS, "Quick sale", R.drawable.ic_cart, PosActivity.class, current);
@@ -204,7 +196,9 @@ public final class NavDrawer {
             loading.setPadding(Ui.dp(activity, 28), Ui.dp(activity, 8), Ui.dp(activity, 16), Ui.dp(activity, 8));
             menu.addView(loading);
         }
-        renderWebMenu();
+        if (permissions.isAdmin) {
+            renderWebMenu();
+        }
 
         View divider = Ui.divider(activity);
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, Math.max(1, Ui.dp(activity, 1)));
@@ -223,9 +217,13 @@ public final class NavDrawer {
     }
 
     private void renderWebMenu() {
-        if (webMenu.isEmpty() || webListener == null) {
-            return;
+        List<WebMenuItem> webMenu = activity.session.webMenu();
+        if (webMenu.isEmpty()) {
+            // Not opened yet on this phone: the dashboard page sends the full menu for next time.
+            String home = activity.session.serverUrl.replaceAll("/+$", "") + "/home";
+            webMenu = Collections.singletonList(new WebMenuItem("Dashboard", home, Collections.emptyList()));
         }
+        trackWebPage(webMenu);
         TextView heading = Ui.text(activity, "BUSINESS SYSTEM", 11, Ui.MUTED, Typeface.BOLD);
         heading.setLetterSpacing(0.08f);
         heading.setPadding(Ui.dp(activity, 28), Ui.dp(activity, 18), Ui.dp(activity, 16), Ui.dp(activity, 6));
@@ -234,9 +232,11 @@ public final class NavDrawer {
         for (WebMenuItem item : webMenu) {
             if (!item.isGroup()) {
                 boolean selected = isCurrentWebPage(item);
-                LinearLayout row = row(item.title, iconFor(item.title), selected ? Ui.PRIMARY : Ui.MUTED,
+                // The app already has its own "Home"; the website's is its dashboard.
+                String label = item.title.equalsIgnoreCase("home") ? "Dashboard" : item.title;
+                LinearLayout row = row(label, iconFor(item.title), selected ? Ui.PRIMARY : Ui.MUTED,
                         selected ? Ui.PRIMARY_DARK : Ui.INK, selected);
-                row.setOnClickListener(view -> webListener.open(item.url));
+                row.setOnClickListener(view -> activity.openWebPage(item.url));
                 menu.addView(row, rowParams());
                 continue;
             }
@@ -274,7 +274,7 @@ public final class NavDrawer {
                 text.setSingleLine(true);
                 text.setEllipsize(TextUtils.TruncateAt.END);
                 row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
-                row.setOnClickListener(view -> webListener.open(child.url));
+                row.setOnClickListener(view -> activity.openWebPage(child.url));
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, Ui.dp(activity, 42));
                 params.setMargins(Ui.dp(activity, 12), 0, Ui.dp(activity, 12), 0);
                 menu.addView(row, params);

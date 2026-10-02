@@ -316,6 +316,23 @@ public abstract class BaseActivity extends AppCompatActivity {
         return false;
     }
 
+    /** Website page shown on this screen (highlighted in the menu); null for native screens. */
+    protected String currentWebUrl() {
+        return null;
+    }
+
+    /** Opens a page of the business website (from the menu) as an app screen. */
+    protected void openWebPage(String url) {
+        closeDrawerIfOpen();
+        Intent home = new Intent(this, HomeActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Intent page = new Intent(this, WebSystemActivity.class).putExtra(WebSystemActivity.EXTRA_URL, url);
+        startActivities(new Intent[]{home, page});
+        if (!(this instanceof HomeActivity)) {
+            finish();
+        }
+    }
+
     /** Opens a drawer destination, keeping Home as the single root of the back stack. */
     void openTopLevel(Class<? extends Activity> target) {
         if (drawerLayout != null) {
