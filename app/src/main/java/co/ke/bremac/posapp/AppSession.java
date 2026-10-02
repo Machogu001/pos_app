@@ -34,6 +34,7 @@ public class AppSession implements ApiClient.TokenProvider {
     public final Cart cart = new Cart();
     public String serverUrl = "";
     public String locationId = "";
+    private boolean allLocations;
     public Business business = Business.fromJson(null);
     public User user = User.fromJson(null);
     public Permissions permissions = new Permissions(null);
@@ -59,6 +60,7 @@ public class AppSession implements ApiClient.TokenProvider {
         tokenStore = new TokenStore(context);
         serverUrl = prefs.getString("server_url", "");
         locationId = prefs.getString("location_id", "");
+        allLocations = prefs.getBoolean("all_locations", false);
         rebuildApi();
         restoreProfile();
     }
@@ -79,7 +81,27 @@ public class AppSession implements ApiClient.TokenProvider {
 
     public void setLocationId(String locationId) {
         this.locationId = locationId;
-        prefs.edit().putString("location_id", locationId).apply();
+        allLocations = false;
+        paymentMethods = new ArrayList<>();
+        prefs.edit().putString("location_id", locationId).putBoolean("all_locations", false).apply();
+    }
+
+    public void selectAllLocations() {
+        allLocations = locations.size() > 1;
+        prefs.edit().putBoolean("all_locations", allLocations).apply();
+    }
+
+    public boolean allLocationsSelected() {
+        return allLocations;
+    }
+
+    /** Null omits the read-only filter; transactions always keep a concrete locationId. */
+    public String locationFilterId() {
+        return allLocations ? null : locationId;
+    }
+
+    public String locationFilterName() {
+        return allLocations ? "All locations" : selectedLocationName();
     }
 
     public void saveToken(String token) throws Exception {
@@ -104,6 +126,8 @@ public class AppSession implements ApiClient.TokenProvider {
         business = Business.fromJson(null);
         permissions = new Permissions(null);
         register = null;
+        allLocations = false;
+        prefs.edit().remove("all_locations").apply();
         locations = new ArrayList<>();
         paymentMethods = new ArrayList<>();
     }
@@ -169,8 +193,15 @@ public class AppSession implements ApiClient.TokenProvider {
         for (Location location : locations) {
             known |= String.valueOf(location.id).equals(locationId);
         }
-        if (!known && !locations.isEmpty()) {
-            setLocationId(String.valueOf(locations.get(0).id));
+        if (!known) {
+            boolean previouslyAll = allLocations;
+            setLocationId(locations.isEmpty() ? "" : String.valueOf(locations.get(0).id));
+            if (previouslyAll && locations.size() > 1) {
+                selectAllLocations();
+            }
+        }
+        if (allLocations && locations.size() < 2) {
+            setLocationId(locationId);
         }
         profileLoaded = true;
     }

@@ -32,6 +32,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import co.ke.bremac.posapp.api.ApiException;
+import co.ke.bremac.posapp.data.Location;
 import co.ke.bremac.posapp.ui.LoadingDialog;
 import co.ke.bremac.posapp.ui.Ui;
 
@@ -301,7 +302,8 @@ public abstract class BaseActivity extends AppCompatActivity {
         if (screenSubtitle != null) {
             String subtitle = customSubtitle;
             if (subtitle == null) {
-                String location = session.selectedLocationName();
+                String location = usesLocationFilter()
+                        ? session.locationFilterName() : session.selectedLocationName();
                 subtitle = session.business.name + (location.isEmpty() ? "" : " • " + location);
             }
             screenSubtitle.setText(subtitle);
@@ -513,6 +515,68 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     // ---- Navigation & access ----------------------------------------------------------------
+
+    protected boolean usesLocationFilter() {
+        return false;
+    }
+
+    void showLocationDialog() {
+        List<String> names = new ArrayList<>();
+        names.add("All locations (permitted locations only)");
+        int selected = session.allLocationsSelected() ? 0 : -1;
+        for (int i = 0; i < session.locations.size(); i++) {
+            Location location = session.locations.get(i);
+            names.add(location.name);
+            if (!session.allLocationsSelected() && String.valueOf(location.id).equals(session.locationId)) {
+                selected = i + 1;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Business location")
+                .setSingleChoiceItems(names.toArray(new String[0]), selected, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which == 0) {
+                        if (!session.allLocationsSelected()) {
+                            session.selectAllLocations();
+                            locationSelectionChanged();
+                        }
+                        return;
+                    }
+                    String id = String.valueOf(session.locations.get(which - 1).id);
+                    if (id.equals(session.locationId) && !session.allLocationsSelected()) {
+                        return;
+                    }
+                    Runnable change = () -> {
+                        session.setLocationId(id);
+                        locationSelectionChanged();
+                    };
+                    if (!id.equals(session.locationId) && !session.cart.lines.isEmpty()) {
+                        new AlertDialog.Builder(this)
+                                .setTitle("Change selling location?")
+                                .setMessage("Changing location will clear the current quick-sale cart so stock and "
+                                        + "prices from different branches are not mixed.")
+                                .setNegativeButton("Cancel", null)
+                                .setPositiveButton("Clear cart & change", (confirmation, button) -> {
+                                    session.cart.clear();
+                                    change.run();
+                                }).show();
+                    } else {
+                        change.run();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void locationSelectionChanged() {
+        closeDrawerIfOpen();
+        refreshChrome();
+        onLocationSelectionChanged();
+    }
+
+    protected void onLocationSelectionChanged() {
+        openTopLevel(HomeActivity.class);
+    }
 
     /** The slide-out menu, or null on screens without one. */
     protected NavDrawer navDrawer() {

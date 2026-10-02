@@ -11,12 +11,10 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
-import co.ke.bremac.posapp.data.Location;
 import co.ke.bremac.posapp.data.Permissions;
 import co.ke.bremac.posapp.data.SaleSummary;
 import co.ke.bremac.posapp.ui.Formats;
@@ -31,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class HomeActivity extends BaseActivity {
@@ -44,6 +43,22 @@ public class HomeActivity extends BaseActivity {
     private LocalDate customEnd;
     private JSONObject dashboard;
     private boolean dashboardLoading;
+    private int dashboardRequest;
+    private String dashboardLocation;
+
+    @Override
+    protected boolean usesLocationFilter() {
+        return true;
+    }
+
+    @Override
+    protected void onLocationSelectionChanged() {
+        dashboard = null;
+        render();
+        if (session.permissions.viewDashboard) {
+            loadDashboard();
+        }
+    }
 
     @Override
     protected NavDrawer.Item navItem() {
@@ -61,6 +76,10 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
+        if (!Objects.equals(dashboardLocation, session.locationFilterId())) {
+            dashboard = null;
+            render();
+        }
         loadProfile(false);
     }
 
@@ -106,8 +125,14 @@ public class HomeActivity extends BaseActivity {
         render();
         String startDate = "custom".equals(period) && customStart != null ? customStart.toString() : null;
         String endDate = "custom".equals(period) && customEnd != null ? customEnd.toString() : null;
-        runAsync("", () -> session.api().dashboard(session.locationId, period, startDate, endDate), result -> {
+        String locationId = session.locationFilterId();
+        int request = ++dashboardRequest;
+        runAsync("", () -> session.api().dashboard(locationId, period, startDate, endDate), result -> {
+            if (request != dashboardRequest || !Objects.equals(locationId, session.locationFilterId())) {
+                return;
+            }
             dashboardLoading = false;
+            dashboardLocation = locationId;
             dashboard = result.optJSONObject("data");
             render();
         });
@@ -154,29 +179,14 @@ public class HomeActivity extends BaseActivity {
         if (session.locations.size() < 2) {
             return;
         }
-        List<String> names = new ArrayList<>();
-        int selected = 0;
-        for (int i = 0; i < session.locations.size(); i++) {
-            Location location = session.locations.get(i);
-            names.add(location.name);
-            if (String.valueOf(location.id).equals(session.locationId)) {
-                selected = i;
-            }
+        Button location = Ui.secondary(this, session.locationFilterName() + "  \u25be");
+        location.setOnClickListener(view -> showLocationDialog());
+        content.addView(Ui.field(this, "LOCATION", location), Ui.params(this, -1, -2, 16));
+        if (session.allLocationsSelected()) {
+            content.addView(Ui.text(this, "Performance and sales include all permitted locations. Quick sales, "
+                    + "products and cash registers use " + session.selectedLocationName() + ".", 12,
+                    Ui.MUTED, Typeface.NORMAL), Ui.params(this, -1, -2, 8));
         }
-        Spinner spinner = Ui.spinner(this, names, selected);
-        spinner.setOnItemSelectedListener(new SimpleItemSelectedListener(position -> {
-            String picked = String.valueOf(session.locations.get(position).id);
-            if (picked.equals(session.locationId)) {
-                return;
-            }
-            session.setLocationId(picked);
-            session.paymentMethods = new ArrayList<>();
-            refreshChrome();
-            if (session.permissions.viewDashboard) {
-                loadDashboard();
-            }
-        }));
-        content.addView(Ui.field(this, "LOCATION", spinner), Ui.params(this, -1, -2, 16));
     }
 
     private void addQuickActions() {
@@ -366,8 +376,10 @@ public class HomeActivity extends BaseActivity {
         }
         for (int i = 0; i < sales.length(); i++) {
             SaleSummary sale = SaleSummary.fromJson(sales.optJSONObject(i));
+            String location = session.allLocationsSelected() && !sale.locationName.isEmpty()
+                    ? "\n" + sale.locationName : "";
             LinearLayout row = Ui.listRow(this, sale.invoiceNo,
-                    sale.customerName + " • " + Formats.dateTime(sale.transactionDate),
+                    sale.customerName + " • " + Formats.dateTime(sale.transactionDate) + location,
                     session.money().format(sale.finalTotal),
                     Ui.statusPill(this, sale.paymentStatus));
             if (canOpen) {

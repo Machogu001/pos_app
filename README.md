@@ -19,6 +19,18 @@ authentication.
 - Receipt view with plain-text sharing and secure invoice opening.
 - Sales history with status filters, search, pagination, and sale detail.
 
+## Business locations
+
+Use **Change location** in the app menu or the **LOCATION** selector on Home.
+Users only see locations granted by their system permissions. **All locations**
+combines performance, recent sales and sales history across those permitted
+locations, and remembers the selection until sign-out.
+
+Quick sales, products/stock, payments and cash registers still use the last
+selected individual location, shown in their app bar. Selecting another branch
+from the menu asks before clearing an unfinished quick-sale cart. The embedded
+website pages retain their own location filters.
+
 ## Server requirement
 
 Deploy the BreMac POS backend with Mobile API v1 enabled over HTTPS. Laravel

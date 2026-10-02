@@ -160,7 +160,7 @@ public final class NavDrawer {
         business.setEllipsize(TextUtils.TruncateAt.END);
         who.addView(business, Ui.params(activity, -1, -2, 1));
 
-        String location = session.selectedLocationName();
+        String location = session.locationFilterName();
         if (!location.isEmpty()) {
             LinearLayout chip = Ui.row(activity);
             chip.setPadding(Ui.dp(activity, 8), Ui.dp(activity, 4), Ui.dp(activity, 10), Ui.dp(activity, 4));
@@ -179,6 +179,12 @@ public final class NavDrawer {
         menu.removeAllViews();
         Permissions permissions = activity.session.permissions;
 
+        if (activity.session.locations.size() > 1) {
+            LinearLayout location = row("Change location", R.drawable.ic_location, Ui.PRIMARY,
+                    Ui.INK, false);
+            location.setOnClickListener(view -> activity.showLocationDialog());
+            menu.addView(location, rowParams());
+        }
         addItem(Item.HOME, "Home", R.drawable.ic_dashboard, HomeActivity.class, current);
         if (permissions.sellCreate) {
             addItem(Item.WEB_POS, "POS", R.drawable.ic_pos, WebPosActivity.class, current);

@@ -20,6 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.Objects;
 
 public class SalesActivity extends BaseActivity {
     private static final String[] STATUSES = {"final", "draft", "quotation"};
@@ -34,6 +35,28 @@ public class SalesActivity extends BaseActivity {
     private LinearLayout list;
     private Button more;
     private EditText search;
+    private String loadedLocation;
+    private int salesRequest;
+
+    @Override
+    protected boolean usesLocationFilter() {
+        return true;
+    }
+
+    @Override
+    protected void onLocationSelectionChanged() {
+        list.removeAllViews();
+        Ui.visible(more, false);
+        loadSales(true);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (list != null && !Objects.equals(loadedLocation, session.locationFilterId())) {
+            onLocationSelectionChanged();
+        }
+    }
 
     @Override
     protected NavDrawer.Item navItem() {
@@ -120,11 +143,19 @@ public class SalesActivity extends BaseActivity {
         }
         int requestedPage = page;
         String requestedStatus = status;
+        String requestedLocation = session.locationFilterId();
+        String requestedQuery = search.getText().toString();
+        loadedLocation = requestedLocation;
+        if (reset) {
+            salesRequest++;
+        }
+        int request = salesRequest;
         runAsync(reset ? "Loading sales…" : "",
-                () -> session.api().sales(requestedStatus, session.locationId, search.getText().toString(),
+                () -> session.api().sales(requestedStatus, requestedLocation, requestedQuery,
                         requestedPage),
                 result -> {
-                    if (!requestedStatus.equals(status)) {
+                    if (request != salesRequest
+                            || !Objects.equals(requestedLocation, session.locationFilterId())) {
                         return;
                     }
                     if (reset) {
@@ -150,8 +181,10 @@ public class SalesActivity extends BaseActivity {
         String customer = sale.customerName == null || sale.customerName.isEmpty() ? "Walk-in customer"
                 : sale.customerName;
         String pillStatus = "final".equals(status) ? sale.paymentStatus : status;
+        String location = session.allLocationsSelected() && !sale.locationName.isEmpty()
+                ? "\n" + sale.locationName : "";
         LinearLayout row = Ui.listRow(this, sale.invoiceNo,
-                customer + "\n" + Formats.dateTime(sale.transactionDate),
+                customer + "\n" + Formats.dateTime(sale.transactionDate) + location,
                 session.money().format(sale.finalTotal),
                 Ui.statusPill(this, pillStatus));
         row.setOnClickListener(view -> SaleDetailActivity.open(this, sale.id));
