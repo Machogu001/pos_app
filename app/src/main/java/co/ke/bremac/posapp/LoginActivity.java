@@ -1,11 +1,11 @@
 package co.ke.bremac.posapp;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -21,6 +21,8 @@ import org.json.JSONObject;
 import java.net.URISyntaxException;
 
 public class LoginActivity extends BaseActivity {
+    private boolean editingServer;
+
     @Override
     protected Chrome chrome() {
         return Chrome.NONE;
@@ -29,6 +31,7 @@ public class LoginActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        editingServer = session.serverUrl.isEmpty();
         render();
     }
 
@@ -46,41 +49,121 @@ public class LoginActivity extends BaseActivity {
 
         LinearLayout form = Ui.card(this);
         form.setPadding(Ui.dp(this, 20), Ui.dp(this, 20), Ui.dp(this, 20), Ui.dp(this, 20));
+        content.addView(form, Ui.params(this, -1, -2, 20));
 
+        if (editingServer) {
+            renderServerEditor(form);
+        } else {
+            renderSignInForm(form);
+        }
+
+        TextView footer = Ui.text(this, "A secure HTTPS connection is required.", 12, Ui.MUTED, Typeface.NORMAL);
+        footer.setGravity(Gravity.CENTER);
+        content.addView(footer, Ui.params(this, -1, -2, 16));
+    }
+
+    /** Server address step: shown on first use, or after tapping "Edit". */
+    private void renderServerEditor(LinearLayout form) {
         EditText server = Ui.input(this, "https://pos.yourbusiness.co.ke",
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         server.setText(session.serverUrl);
+        server.setSelection(server.getText().length());
+        server.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        form.addView(Ui.field(this, "SERVER ADDRESS", server));
+        TextView hint = Ui.text(this, "Enter your business system's web address. You only need to do this once.",
+                13, Ui.MUTED, Typeface.NORMAL);
+        form.addView(hint, Ui.params(this, -1, -2, 8));
+
+        LinearLayout buttons = Ui.row(this);
+        boolean hasSaved = !session.serverUrl.isEmpty();
+        if (hasSaved) {
+            Button cancel = Ui.secondary(this, "Cancel");
+            cancel.setOnClickListener(view -> {
+                editingServer = false;
+                render();
+            });
+            LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1);
+            cancelParams.setMarginEnd(Ui.dp(this, 12));
+            buttons.addView(cancel, cancelParams);
+        }
+        Button save = Ui.primary(this, "Save");
+        buttons.addView(save, new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
+        form.addView(buttons, Ui.params(this, -1, -2, 20));
+
+        save.setOnClickListener(view -> saveServer(server));
+        server.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                saveServer(server);
+                return true;
+            }
+            return false;
+        });
+        server.requestFocus();
+    }
+
+    private void saveServer(EditText server) {
+        String normalized;
+        try {
+            normalized = ServerUrl.normalize(server.getText().toString());
+        } catch (IllegalArgumentException | URISyntaxException exception) {
+            showError(exception.getMessage());
+            return;
+        }
+        if (!normalized.equals(session.serverUrl)) {
+            // A business location from another server would not exist on the new one.
+            session.setLocationId("");
+        }
+        session.setServerUrl(normalized);
+        editingServer = false;
+        render();
+    }
+
+    private void renderSignInForm(LinearLayout form) {
+        LinearLayout serverRow = Ui.row(this);
+        serverRow.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10));
+        serverRow.setBackground(Ui.rounded(Ui.PRIMARY_SOFT, Ui.dp(this, 12)));
+        serverRow.addView(Ui.icon(this, R.drawable.ic_web, Ui.PRIMARY_TEXT),
+                new LinearLayout.LayoutParams(Ui.dp(this, 20), Ui.dp(this, 20)));
+        LinearLayout serverText = Ui.column(this);
+        serverText.setPadding(Ui.dp(this, 10), 0, Ui.dp(this, 8), 0);
+        serverText.addView(Ui.text(this, "SERVER", 11, Ui.MUTED, Typeface.BOLD));
+        String host = Uri.parse(session.serverUrl).getHost();
+        TextView hostView = Ui.text(this, host == null ? session.serverUrl : host, 14, Ui.INK, Typeface.BOLD);
+        hostView.setSingleLine(true);
+        hostView.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        serverText.addView(hostView);
+        serverRow.addView(serverText, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView edit = Ui.link(this, "Edit", Ui.PRIMARY_TEXT);
+        edit.setContentDescription("Edit server address");
+        edit.setOnClickListener(view -> {
+            editingServer = true;
+            render();
+        });
+        serverRow.addView(edit);
+        form.addView(serverRow, new LinearLayout.LayoutParams(-1, -2));
+
         EditText username = Ui.input(this, "Username", InputType.TYPE_CLASS_TEXT);
         EditText password = Ui.input(this, "Password",
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         password.setTypeface(android.graphics.Typeface.DEFAULT);
         password.setImeOptions(EditorInfo.IME_ACTION_DONE);
 
-        form.addView(Ui.field(this, "SERVER ADDRESS", server));
-        form.addView(Ui.field(this, "USERNAME", username), Ui.params(this, -1, -2, 16));
+        form.addView(Ui.field(this, "USERNAME", username), Ui.params(this, -1, -2, 18));
         form.addView(Ui.field(this, "PASSWORD", password), Ui.params(this, -1, -2, 16));
 
         Button signIn = Ui.primary(this, "Sign in");
         form.addView(signIn, Ui.params(this, -1, 52, 22));
-        content.addView(form, Ui.params(this, -1, -2, 20));
 
-        TextView footer = Ui.text(this, "A secure HTTPS connection is required.", 12, Ui.MUTED, Typeface.NORMAL);
-        footer.setGravity(Gravity.CENTER);
-        content.addView(footer, Ui.params(this, -1, -2, 16));
-
-        signIn.setOnClickListener(view -> signIn(server, username, password));
+        signIn.setOnClickListener(view -> signIn(username, password));
         password.setOnEditorActionListener((view, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                signIn(server, username, password);
+                signIn(username, password);
                 return true;
             }
             return false;
         });
-        if (!session.serverUrl.isEmpty()) {
-            username.requestFocus();
-        }
+        username.requestFocus();
     }
-
     /** Logo, app name and subtitle shared by the sign-in and verification screens. */
     static void addBrandHeader(BaseActivity activity, LinearLayout parent, String heading, String subtitle) {
         ImageView logo = new ImageView(activity);
@@ -106,15 +189,9 @@ public class LoginActivity extends BaseActivity {
         parent.addView(sub, Ui.params(activity, -2, -2, 4));
     }
 
-    private void signIn(EditText server, EditText username, EditText password) {
+    private void signIn(EditText username, EditText password) {
         if (username.getText().toString().trim().isEmpty() || password.getText().toString().isEmpty()) {
             showError("Enter your username and password.");
-            return;
-        }
-        try {
-            session.setServerUrl(ServerUrl.normalize(server.getText().toString()));
-        } catch (IllegalArgumentException | URISyntaxException exception) {
-            showError(exception.getMessage());
             return;
         }
 
