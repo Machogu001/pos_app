@@ -264,7 +264,7 @@ final class WebsiteReceipt {
                         return;
                     }
                     if (height <= 0 || width <= 0 || pixels > 20000 || (long) width * pixels > 12_000_000) {
-                        fail("This website receipt exceeds the safe rendering size. Share the invoice PDF instead.");
+                        fail("This website receipt exceeds the safe rendering size. Open the document on the website instead.");
                         return;
                     }
                     ready = true;
