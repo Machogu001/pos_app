@@ -11,7 +11,7 @@ Backend repository: [Machogu001/Pos](https://github.com/Machogu001/Pos).
 See the backend's [system mobile guide and API contract](https://github.com/Machogu001/Pos/blob/main/docs/MOBILE_API.md)
 and [installation runbook](https://github.com/Machogu001/Pos/blob/main/INSTALLATION.md).
 
-Current app version: **2.12.1** (Android version code **17**). Android **8.0
+Current app version: **2.12.2** (Android version code **18**). Android **8.0
 (API 26)** or newer and an internet connection are required. This app does not
 provide offline sales or queued offline synchronization.
 
@@ -186,6 +186,12 @@ the backend `INSTALLATION.md` without clearing sale idempotency records.
 
 Use **Print receipt** on the completed receipt, sale details or in-app document
 viewer. This prints a thermal receipt from the saved document's sale data;
+Embedded **POS** invoice/receipt print actions also open this same
+Bluetooth/network picker. Deploy the backend update so app POS receives HTML
+even when the branch uses the website's websocket printer configuration.
+Normal website browser printing is unchanged. Embedded website colors are
+preserved rather than algorithmically darkened; native app controls still
+follow the selected theme, while invoice/receipt content stays white and readable. This prints a thermal receipt from the saved document's sale data;
 the app renders the actual configured website receipt as a raster image. It
 does not reconstruct the receipt with printer fonts or send A4 PDF bytes.
 

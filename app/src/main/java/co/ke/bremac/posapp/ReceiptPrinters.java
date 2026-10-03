@@ -39,6 +39,9 @@ import java.util.List;
 import java.util.UUID;
 
 final class ReceiptPrinters {
+    interface ReceiptSource {
+        void render(int paperMm, WebsiteReceipt.Success success);
+    }
     private static final String PREFS = "receipt_printers";
 
     private ReceiptPrinters() {
@@ -50,6 +53,19 @@ final class ReceiptPrinters {
             message(activity, "Cannot print", "Load a saved sale with item details before printing.");
             return;
         }
+        show(activity, (paper, callback) -> WebsiteReceipt.render(activity, sale.id, paper, callback));
+    }
+
+    static void showHtml(BaseActivity activity, String html) {
+        if (html == null || html.trim().isEmpty()) {
+            message(activity, "Cannot print", "No website receipt content was provided.");
+            return;
+        }
+        show(activity, (paper, callback) -> WebsiteReceipt.renderHtml(activity, html, paper, callback));
+    }
+
+    private static void show(BaseActivity activity, ReceiptSource source) {
+        if (activity.isFinishing() || activity.isDestroyed()) return;
         LinearLayout box = Ui.dialogBox(activity);
         box.addView(Ui.text(activity, "ESC/POS-compatible printers only. Choose a connection. "
                 + "Bluetooth printers must first be paired in Android settings.",
@@ -62,11 +78,11 @@ final class ReceiptPrinters {
                 .setView(box).setNegativeButton("Cancel", null).create();
         bluetooth.setOnClickListener(view -> {
             dialog.dismiss();
-            withBluetoothPermission(activity, () -> loadPaired(activity, sale));
+            withBluetoothPermission(activity, () -> loadPaired(activity, source));
         });
         network.setOnClickListener(view -> {
             dialog.dismiss();
-            network(activity, sale);
+            network(activity, source);
         });
         dialog.show();
     }
@@ -144,7 +160,7 @@ final class ReceiptPrinters {
         return manager == null ? null : manager.getAdapter();
     }
 
-    private static void loadPaired(BaseActivity activity, Sale sale) {
+    private static void loadPaired(BaseActivity activity, ReceiptSource source) {
         activity.runAsync("Reading paired devices…", () -> {
             BluetoothAdapter adapter = adapter(activity);
             if (adapter == null) throw new IllegalStateException("This device does not support Bluetooth.");
@@ -168,11 +184,11 @@ final class ReceiptPrinters {
                                 new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))).show();
                 return;
             }
-            bluetooth(activity, sale, devices);
+            bluetooth(activity, source, devices);
         });
     }
 
-    private static void bluetooth(BaseActivity activity, Sale sale, JSONArray devices) throws Exception {
+    private static void bluetooth(BaseActivity activity, ReceiptSource source, JSONArray devices) throws Exception {
         SharedPreferences prefs = settings(activity);
         List<String> addresses = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -200,7 +216,7 @@ final class ReceiptPrinters {
             boolean cut = form.cut.isChecked();
             form.save(prefs.edit().putString("bluetooth_address", address));
             dialog.dismiss();
-            WebsiteReceipt.render(activity, sale.id, paper, bitmap ->
+            source.render(paper, bitmap ->
                     activity.runAsync("Sending receipt...", () -> {
                         try {
                             BluetoothAdapter adapter = adapter(activity);
@@ -222,7 +238,7 @@ final class ReceiptPrinters {
         dialog.show();
     }
 
-    private static void network(BaseActivity activity, Sale sale) {
+    private static void network(BaseActivity activity, ReceiptSource source) {
         SharedPreferences prefs = settings(activity);
         PrintForm form = new PrintForm(activity);
         EditText host = Ui.input(activity, "192.168.1.100 or printer.local",
@@ -257,7 +273,7 @@ final class ReceiptPrinters {
             boolean cut = form.cut.isChecked();
             form.save(prefs.edit().putString("network_host", hostname).putInt("network_port", portNumber));
             dialog.dismiss();
-            WebsiteReceipt.render(activity, sale.id, paper, bitmap ->
+            source.render(paper, bitmap ->
                     activity.runAsync("Sending receipt...", () -> {
                         try {
                             ReceiptPrinterTransport.network(hostname, portNumber, EscPosRaster.encode(

@@ -10,8 +10,6 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.print.PrintAttributes;
-import android.print.PrintManager;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -84,16 +82,38 @@ public class WebPosActivity extends BaseActivity {
             });
 
     /** Saves website exports (reports, PDFs, spreadsheets) to Downloads using the signed-in session. */
-    /** Darkens website pages to match the app when the dark theme is on. */
+    /** Preserve website colors; algorithmic darkening can hide black invoice text. */
     @SuppressWarnings("deprecation")
     private static void applyWebTheme(WebSettings settings) {
-        boolean dark = Ui.isDark();
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            settings.setAlgorithmicDarkeningAllowed(dark);
+            settings.setAlgorithmicDarkeningAllowed(false);
         } else if (android.os.Build.VERSION.SDK_INT >= 29) {
-            settings.setForceDark(dark ? WebSettings.FORCE_DARK_ON : WebSettings.FORCE_DARK_OFF);
+            settings.setForceDark(WebSettings.FORCE_DARK_OFF);
         }
     }
+
+    static final String RECEIPT_SCRIPT = "(function(){"
+            + "if(window.__bremacReceiptPrint)return;window.__bremacReceiptPrint=1;"
+            + "var style=document.createElement('style');style.textContent="
+            + "'#invoice_content,#receipt_section,.receipt-wrap{background:#fff!important;color:#000!important;"
+            + "color-scheme:light!important}';document.head.appendChild(style);"
+            + "function send(node){if(!node){alert('Open an invoice or receipt before printing.');return;}"
+            + "var css=Array.from(document.querySelectorAll('link[rel=stylesheet],style'))"
+            + ".map(function(n){return n.outerHTML;}).join('');"
+            + "var html='<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">'"
+            + "+'<meta http-equiv=\"Content-Security-Policy\" content=\"default-src &#39;none&#39;;"
+            + " style-src &#39;self&#39; &#39;unsafe-inline&#39;; img-src &#39;self&#39; data:;"
+            + " font-src &#39;self&#39; data:; script-src &#39;none&#39;\">'+css"
+            + "+'<style>html,body{margin:0;padding:0;background:white;color:black}.no-print{display:none!important}"
+            + "#receipt_section,.print_section{display:block!important;visibility:visible!important;"
+            + "position:static!important;width:100%!important}</style>'"
+            + "+'</head><body>'+node.outerHTML+'</body></html>';"
+            + PRINT_BRIDGE + ".receipt(html);}"
+            + "window.__print_receipt=function(id){send(document.getElementById(id));};"
+            + "window.print=function(){send(document.getElementById('invoice_content')"
+            + "||document.getElementById('receipt_section'));};"
+            + "if(window.jQuery){jQuery.fn.printThis=function(){send(this[0]);return this;};}"
+            + "})();";
 
     private void download(String url, String userAgent, String contentDisposition, String mimeType, long length) {
         Uri uri = Uri.parse(url);
@@ -434,9 +454,7 @@ public class WebPosActivity extends BaseActivity {
                 showLoadError("Your website session ended. Tap \"Try again\" to reopen it.");
                 return;
             }
-            // Android WebView ignores window.print(); route receipt printing to the system print dialog.
-            view.evaluateJavascript("window.print=function(){" + PRINT_BRIDGE + ".print(document.title||'Receipt');};",
-                    null);
+            view.evaluateJavascript(RECEIPT_SCRIPT, null);
             view.evaluateJavascript(GESTURE_SCRIPT, null);
             onWebPageFinished(view, url);
         }
@@ -464,18 +482,13 @@ public class WebPosActivity extends BaseActivity {
 
     private final class PrintBridge {
         @JavascriptInterface
-        public void print(String title) {
+        public void receipt(String html) {
             runOnUiThreadSafe(() -> {
                 String current = webView.getUrl();
                 if (current == null || !isOwnServer(Uri.parse(current))) {
                     return;
                 }
-                String jobName = title == null || title.trim().isEmpty() ? "Receipt" : title.trim();
-                PrintManager printManager = (PrintManager) getSystemService(PRINT_SERVICE);
-                if (printManager != null) {
-                    printManager.print(jobName, webView.createPrintDocumentAdapter(jobName),
-                            new PrintAttributes.Builder().build());
-                }
+                ReceiptPrinters.showHtml(WebPosActivity.this, html);
             });
         }
     }
