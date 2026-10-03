@@ -11,8 +11,8 @@ public class SalePayment {
     public SalePayment(JSONObject object) {
         method = object.optString("method");
         amount = object.optDouble("amount");
-        paidOn = object.optString("paid_on");
-        reference = object.optString("reference");
+        paidOn = Json.string(object, "paid_on");
+        reference = Json.string(object, "reference");
     }
 
     public static SalePayment fromJson(JSONObject object) {

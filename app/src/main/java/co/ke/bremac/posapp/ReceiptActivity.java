@@ -1,8 +1,6 @@
 package co.ke.bremac.posapp;
 
-import android.content.Intent;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.Button;
@@ -23,9 +21,18 @@ public class ReceiptActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setScreenTitle("Receipt");
         render();
+        if (session.lastSale != null && session.lastSale.receiptText.isEmpty()) {
+            int id = session.lastSale.id;
+            runAsync("Loading saved receipt...", () -> session.api().sale(id), result -> {
+                session.lastSale = Sale.fromJson(result.getJSONObject("data"));
+                render();
+            });
+        }
     }
 
     private void render() {
+        content.removeAllViews();
+        bottomBar().removeAllViews();
         Sale sale = session.lastSale;
         LinearLayout hero = Ui.column(this);
         hero.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -44,6 +51,10 @@ public class ReceiptActivity extends BaseActivity {
 
         if (sale != null) {
             SaleDetailActivity.addSummary(this, content, sale);
+            if (!sale.receiptError.isEmpty()) {
+                content.addView(Ui.banner(this, sale.receiptError, Ui.WARNING, Ui.WARNING_SOFT),
+                        Ui.params(this, -1, -2, 12));
+            }
             if (sale.receiptText != null && !sale.receiptText.isEmpty()) {
                 section("Receipt");
                 TextView receipt = Ui.text(this, sale.receiptText, 13, Ui.INK, Typeface.NORMAL);
@@ -61,14 +72,21 @@ public class ReceiptActivity extends BaseActivity {
 
         LinearLayout actions = Ui.row(this);
         Button share = Ui.secondary(this, "Share");
-        Button invoice = Ui.secondary(this, "Open invoice");
+        Button invoice = Ui.secondary(this, sale != null && "quotation".equals(sale.status)
+                ? "Open quotation" : sale != null && "draft".equals(sale.status) ? "Open draft" : "Open invoice");
         LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1);
         right.setMarginStart(Ui.dp(this, 10));
         actions.addView(share, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
         actions.addView(invoice, right);
         content.addView(actions, Ui.params(this, -1, -2, 16));
-        share.setOnClickListener(view -> share(this, sale == null ? "" : sale.receiptText));
-        invoice.setOnClickListener(view -> openInvoice(sale == null ? "" : sale.receiptUrl));
+        share.setEnabled(sale != null);
+        invoice.setEnabled(sale != null);
+        share.setOnClickListener(view -> SaleDocuments.open(this, sale, true));
+        invoice.setOnClickListener(view -> SaleDocuments.open(this, sale, false));
+        Button print = Ui.secondary(this, "Print receipt");
+        print.setEnabled(sale != null);
+        print.setOnClickListener(view -> ReceiptPrinters.show(this, sale));
+        content.addView(print, Ui.params(this, -1, 48, 10));
     }
 
     private static String headingFor(String status) {
@@ -79,25 +97,6 @@ public class ReceiptActivity extends BaseActivity {
             return "Quotation saved";
         }
         return "Sale completed";
-    }
-
-    static void share(BaseActivity activity, String text) {
-        if (text == null || text.isEmpty()) {
-            activity.toast("Receipt text is not available.");
-            return;
-        }
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TEXT, text);
-        activity.startActivity(Intent.createChooser(intent, "Share receipt"));
-    }
-
-    private void openInvoice(String url) {
-        if (url == null || !url.startsWith("https://")) {
-            toast("A secure invoice link is not available.");
-            return;
-        }
-        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
 
     @Override

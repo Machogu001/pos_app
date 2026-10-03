@@ -15,14 +15,14 @@ public class SaleSummary {
 
     public SaleSummary(JSONObject object) {
         id = object.optInt("id");
-        invoiceNo = object.optString("invoice_no");
-        transactionDate = object.optString("transaction_date");
-        customerName = object.optString("customer_name");
+        invoiceNo = Json.string(object, "invoice_no");
+        transactionDate = Json.string(object, "transaction_date");
+        customerName = Json.string(object, "customer_name");
         finalTotal = object.optDouble("final_total");
         totalPaid = object.optDouble("total_paid");
         paymentStatus = object.optString("payment_status");
         status = object.optString("status");
-        locationName = object.optString("location_name");
+        locationName = Json.string(object, "location_name");
     }
 
     public static SaleSummary fromJson(JSONObject object) {

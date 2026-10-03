@@ -11,10 +11,10 @@ public class SaleItem {
     public final double lineTotal;
 
     public SaleItem(JSONObject object) {
-        name = object.optString("name");
-        sku = object.optString("sku");
+        name = Json.string(object, "name");
+        sku = Json.string(object, "sku");
         quantity = object.optDouble("quantity");
-        unit = object.optString("unit");
+        unit = Json.string(object, "unit");
         unitPriceIncTax = object.optDouble("unit_price_inc_tax");
         lineTotal = object.optDouble("line_total");
     }

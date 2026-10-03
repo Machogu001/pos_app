@@ -3,7 +3,6 @@ package co.ke.bremac.posapp;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -63,15 +62,21 @@ public class SaleDetailActivity extends BaseActivity {
         addSummary(this, content, sale);
         addItems(sale);
         addPayments(sale);
-
-        Button share = Ui.primary(this, "Share receipt");
-        content.addView(share, Ui.params(this, -1, 52, 20));
-        share.setOnClickListener(view -> ReceiptActivity.share(this, sale.receiptText));
-        if (sale.receiptUrl != null && sale.receiptUrl.startsWith("https://")) {
-            Button invoice = Ui.secondary(this, "Open invoice");
-            content.addView(invoice, Ui.params(this, -1, 48, 10));
-            invoice.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(sale.receiptUrl))));
+        if (!sale.receiptError.isEmpty()) {
+            content.addView(Ui.banner(this, sale.receiptError, Ui.WARNING, Ui.WARNING_SOFT),
+                    Ui.params(this, -1, -2, 12));
         }
+
+        Button share = Ui.primary(this, "Share document");
+        content.addView(share, Ui.params(this, -1, 52, 20));
+        share.setOnClickListener(view -> SaleDocuments.open(this, sale, true));
+        Button invoice = Ui.secondary(this, "quotation".equals(sale.status)
+                ? "Open quotation" : "draft".equals(sale.status) ? "Open draft" : "Open invoice");
+        content.addView(invoice, Ui.params(this, -1, 48, 10));
+        invoice.setOnClickListener(view -> SaleDocuments.open(this, sale, false));
+        Button print = Ui.secondary(this, "Print receipt");
+        print.setOnClickListener(view -> ReceiptPrinters.show(this, sale));
+        content.addView(print, Ui.params(this, -1, 48, 10));
     }
 
     /** Header card with invoice, customer, status and totals; shared with the receipt screen. */

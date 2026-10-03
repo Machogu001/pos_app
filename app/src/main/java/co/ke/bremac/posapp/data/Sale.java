@@ -13,6 +13,7 @@ public class Sale extends SaleSummary {
     public final double changeReturn;
     public final String receiptUrl;
     public final String receiptText;
+    public final String receiptError;
 
     public Sale(JSONObject object) {
         super(object);
@@ -22,8 +23,9 @@ public class Sale extends SaleSummary {
         taxAmount = object.optDouble("tax_amount");
         payments = Json.list(object.optJSONArray("payments"), SalePayment::fromJson);
         changeReturn = object.optDouble("change_return");
-        receiptUrl = object.optString("receipt_url");
-        receiptText = object.optString("receipt_text");
+        receiptUrl = Json.string(object, "receipt_url");
+        receiptText = Json.string(object, "receipt_text");
+        receiptError = Json.string(object, "receipt_error");
     }
 
     public static Sale fromJson(JSONObject object) {

@@ -11,7 +11,7 @@ Backend repository: [Machogu001/Pos](https://github.com/Machogu001/Pos).
 See the backend's [system mobile guide and API contract](https://github.com/Machogu001/Pos/blob/main/docs/MOBILE_API.md)
 and [installation runbook](https://github.com/Machogu001/Pos/blob/main/INSTALLATION.md).
 
-Current app version: **2.10.0** (Android version code **13**). Android **8.0
+Current app version: **2.11.0** (Android version code **15**). Android **8.0
 (API 26)** or newer and an internet connection are required. This app does not
 provide offline sales or queued offline synchronization.
 
@@ -25,7 +25,7 @@ provide offline sales or queued offline synchronization.
   scanners, stock warnings, cart quantities, permitted price edits/discounts,
   customer search/create, split payments, cash/card/M-Pesa STK polling, drafts,
   quotations, final sales and idempotent client references.
-- Receipt view with plain-text sharing and secure invoice opening.
+- Receipt view with PDF invoice/draft/quotation opening and document attachment sharing.
 - Sales history with status filters, search, pagination and sale detail.
 - Permission-filtered navigation drawer, embedded website POS, and administrator
   website menus including available purchases, products and reports.
@@ -119,6 +119,65 @@ website and a web browser. Review these in **Reports > Activity log** with an
 authorized account. Device labels are descriptive metadata, not a trusted
 device identity or proof of ownership.
 
+## Receipts and document sharing
+
+After saving, the receipt contains the saved sale's details and payment
+references. **Open invoice** (or Open draft/Open quotation) retrieves the
+server-generated PDF and opens it inside the app with page and zoom controls. **Share** attaches
+that PDF rather than sending a plain-text receipt. Sales history offers the same
+document actions for existing sales; neither action creates a payment.
+
+Deploy the backend's `GET /sales/{id}/document` endpoint before installing this
+version. It reuses the system's invoice PDF renderer and respects business,
+location and own-sale access. PDF rendering needs the backend's existing mPDF
+dependencies and writable `public/uploads/temp`. PDFs are cached in the app's
+private cache and shared through temporary read grants, without exposing tokens.
+Only share customer/payment documents with intended recipients.
+
+## Stock protection
+
+Quick sale shows available branch stock. Repeated product additions, the +
+button and manually entered quantities cannot exceed the known stock; tap
+the quantity to enter a decimal amount. Stock-tracked products with unknown
+availability cannot proceed until stock is refreshed. Non-stock-tracked
+services are not quantity-limited by inventory.
+
+The app checks current server stock before opening checkout, accepting a
+payment, sending an STK request and completing a sale. Insufficient stock
+shows a warning and prevents continuation. The backend checks again while
+saving, aggregates duplicate variation quantities and shared combo components,
+and holds stock locks during the mobile save. Completed mobile sales do not
+honor the website's Allow overselling setting; drafts and quotations do not
+consume stock. The website's own overselling policy is unchanged.
+
+Stock can change after an STK request was sent. A stock failure at completion
+must not trigger a second payment: the confirmed payment remains in the cart.
+Resolve stock or the payment with the administrator before retrying completion.
+Pre-payment checks are not stock reservations.
+
+## Thermal receipt printing
+
+Use **Print receipt** on the completed receipt, sale details or in-app document
+viewer. This prints a thermal receipt from the saved document's sale data;
+it does not send A4 PDF bytes to the printer.
+
+Supported printers must implement **ESC/POS** using Bluetooth Classic serial
+printing (SPP), or raw network TCP printing (commonly port **9100**). BLE-only,
+USB-only and vendor-specific non-ESC/POS printers are not supported.
+
+Pair Bluetooth printers through Android Bluetooth settings first, then select
+a paired printer in the app. Android 12+ requires the app's Nearby devices /
+Bluetooth connection permission. No discovery/location permission is requested.
+For network printing, enter the printer's reachable IP/host and TCP port; the
+phone and printer normally need the same trusted local network.
+
+Select the matching 58 mm or 80 mm paper width. Printer settings are stored
+locally. ESC/POS output uses a basic ASCII-safe text receipt; it is not a
+pixel-identical copy of the website PDF and non-ASCII artwork/text may differ.
+Successful transmission means data was sent, not that paper output was
+confirmed. If a connection fails midway, check the printer before retrying to
+avoid duplicate receipts.
+
 ## Troubleshooting
 
 | Symptom | What to check |
@@ -174,7 +233,7 @@ the APK signature with Android SDK `apksigner` before distribution.
 
 In the current Windows workspace, private signing material is kept outside the
 repository in `D:\Myapps\pos_app_keys`; versioned release artifacts are kept in
-its `releases` directory (for example, `BreMac360-POS-2.10.0.apk` and `.aab`).
+its `releases` directory (for example, `BreMac360-POS-2.11.0.apk` and `.aab`).
 These local files are not automatically GitHub Releases or store publications.
 Keep encrypted, access-controlled backups of the keystore and recovery
 credentials. Never commit keystores, `keystore.properties`, passwords or private

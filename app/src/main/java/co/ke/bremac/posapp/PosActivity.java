@@ -21,7 +21,6 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
-import co.ke.bremac.posapp.api.ApiException;
 import co.ke.bremac.posapp.cart.Cart;
 import co.ke.bremac.posapp.data.Customer;
 import co.ke.bremac.posapp.data.Json;
@@ -276,7 +275,26 @@ public class PosActivity extends BaseActivity {
             toast(product.name + " is out of stock.");
             return;
         }
-        session.cart.add(product.variationId, product.name, product.sku, product.priceIncTax);
+        Cart.Line existing = null;
+        for (Cart.Line line : session.cart.lines) {
+            if (line.variationId == product.variationId) {
+                existing = line;
+                break;
+            }
+        }
+        Cart.Line candidate = existing == null
+                ? new Cart.Line(product.variationId, product.name, product.sku, 1, product.priceIncTax) : existing;
+        candidate.setStock(product.enableStock, product.stockKnown, product.stock);
+        if (!candidate.canSetQuantity(existing == null ? 1 : existing.quantity + 1)) {
+            showError(product.name + ": cannot add more than the available stock ("
+                    + (product.stockKnown ? Formats.quantity(product.stock) : "unknown") + ").");
+            return;
+        }
+        if (existing == null) {
+            session.cart.lines.add(candidate);
+        } else {
+            existing.quantity++;
+        }
         renderCart();
         toast("Added " + product.name);
     }
@@ -288,12 +306,12 @@ public class PosActivity extends BaseActivity {
 
     /**
      * Prices depend on the customer (price group/markup) and location, so refresh
-     * every line the cashier has not manually overridden from the server.
+     * every line's stock and every price the cashier has not manually overridden.
      */
     private void repriceCart() {
         List<Cart.Line> lines = new ArrayList<>();
         for (Cart.Line line : session.cart.lines) {
-            if (!line.priceEdited && line.sku != null && !line.sku.isEmpty()) {
+            if (line.sku != null && !line.sku.isEmpty()) {
                 lines.add(line);
             }
         }
@@ -306,26 +324,27 @@ public class PosActivity extends BaseActivity {
         runAsync("Updating prices…", () -> {
             JSONObject prices = new JSONObject();
             for (Cart.Line line : lines) {
-                try {
-                    JSONObject data = session.api().lookup(line.sku, locationId, contactId).optJSONObject("data");
-                    if (data != null) {
-                        Product product = Product.fromJson(data);
-                        if (product.variationId == line.variationId) {
-                            prices.put(String.valueOf(line.variationId), product.priceIncTax);
-                        }
-                    }
-                } catch (ApiException exception) {
-                    if (exception.isUnauthenticated()) {
-                        throw exception;
-                    }
+                JSONObject data = session.api().lookup(line.sku, locationId, contactId).getJSONObject("data");
+                Product product = Product.fromJson(data);
+                if (product.variationId != line.variationId) {
+                    throw new java.io.IOException("Product identity changed for " + line.name + ". Remove and add it again.");
                 }
+                prices.put(String.valueOf(line.variationId), data);
             }
             return prices;
         }, prices -> {
+            if (!locationId.equals(session.locationId)) {
+                showError("The selling location changed. Refresh prices and stock again.");
+                return;
+            }
             for (Cart.Line line : session.cart.lines) {
                 String key = String.valueOf(line.variationId);
-                if (!line.priceEdited && prices.has(key)) {
-                    line.unitPrice = prices.getDouble(key);
+                if (prices.has(key)) {
+                    Product product = Product.fromJson(prices.getJSONObject(key));
+                    if (!line.priceEdited) {
+                        line.unitPrice = product.priceIncTax;
+                    }
+                    line.setStock(product.enableStock, product.stockKnown, product.stock);
                 }
             }
             renderCart();
@@ -373,6 +392,11 @@ public class PosActivity extends BaseActivity {
         String detail = (line.sku == null || line.sku.isEmpty() ? "" : line.sku + " • ")
                 + session.money().format(line.unitPrice) + " each" + (line.priceEdited ? " (edited)" : "");
         texts.addView(Ui.text(this, detail, 12, Ui.MUTED, Typeface.NORMAL), Ui.params(this, -2, -2, 2));
+        if (line.enableStock) {
+            texts.addView(Ui.text(this, "Available: " + (line.stockKnown
+                    ? Formats.quantity(line.availableStock) : "unknown"), 12,
+                    line.canSetQuantity(line.quantity) ? Ui.MUTED : Ui.DANGER, Typeface.NORMAL));
+        }
         top.addView(texts, new LinearLayout.LayoutParams(0, -2, 1));
         ImageView remove = Ui.icon(this, R.drawable.ic_close, Ui.MUTED);
         remove.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6));
@@ -404,6 +428,7 @@ public class PosActivity extends BaseActivity {
         TextView quantity = Ui.text(this, Formats.quantity(line.quantity), 16, Ui.INK, Typeface.BOLD);
         quantity.setGravity(Gravity.CENTER);
         quantity.setMinWidth(Ui.dp(this, 44));
+        quantity.setOnClickListener(view -> editQuantity(line));
         stepper.addView(minus, new LinearLayout.LayoutParams(Ui.dp(this, 42), Ui.dp(this, 42)));
         stepper.addView(quantity, new LinearLayout.LayoutParams(-2, Ui.dp(this, 42)));
         stepper.addView(plus, new LinearLayout.LayoutParams(Ui.dp(this, 42), Ui.dp(this, 42)));
@@ -415,10 +440,36 @@ public class PosActivity extends BaseActivity {
             renderCart();
         });
         plus.setOnClickListener(view -> {
+            if (!line.canSetQuantity(line.quantity + 1)) {
+                showError(line.name + ": quantity exceeds available stock ("
+                        + (line.stockKnown ? Formats.quantity(line.availableStock) : "unknown") + ").");
+                return;
+            }
             line.quantity++;
             renderCart();
         });
         return stepper;
+    }
+
+    private void editQuantity(Cart.Line line) {
+        EditText input = Ui.input(this, "Quantity", InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setText(Formats.quantity(line.quantity));
+        LinearLayout box = Ui.dialogBox(this);
+        box.addView(Ui.field(this, "Quantity", input));
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(line.name).setView(box)
+                .setNegativeButton("Cancel", null).setPositiveButton("Apply", null).create();
+        dialog.setOnShowListener(shown -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            double quantity = number(input);
+            if (!line.canSetQuantity(quantity)) {
+                input.setError(quantity <= 0 || !Double.isFinite(quantity) ? "Enter a quantity greater than zero"
+                        : "Available stock: " + (line.stockKnown ? Formats.quantity(line.availableStock) : "unknown"));
+                return;
+            }
+            line.quantity = quantity;
+            dialog.dismiss();
+            renderCart();
+        }));
+        dialog.show();
     }
 
     private TextView stepButton(String label) {
@@ -534,7 +585,7 @@ public class PosActivity extends BaseActivity {
             if (focused != null) {
                 focused.clearFocus();
             }
-            startActivity(new Intent(this, CheckoutActivity.class));
+            CartStock.verify(this, () -> startActivity(new Intent(this, CheckoutActivity.class)));
         });
         row.addView(checkoutButton, new LinearLayout.LayoutParams(Ui.dp(this, 150), Ui.dp(this, 50)));
         bar.addView(row, new LinearLayout.LayoutParams(-1, -2));

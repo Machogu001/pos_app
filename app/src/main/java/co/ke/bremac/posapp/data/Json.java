@@ -14,6 +14,10 @@ public final class Json {
         T parse(JSONObject object);
     }
 
+    public static String string(JSONObject object, String key) {
+        return object.isNull(key) ? "" : object.optString(key, "");
+    }
+
     public static <T> List<T> list(JSONArray array, Parser<T> parser) {
         List<T> items = new ArrayList<>();
         if (array == null) {

@@ -154,6 +154,11 @@ public class PosApi {
         return client.request("POST", "/sales", body, true);
     }
 
+    public JSONObject validateStock(String locationId, org.json.JSONArray items) throws Exception {
+        return client.request("POST", "/sales/validate-stock",
+                new JSONObject().put("location_id", Integer.parseInt(locationId)).put("items", items), true);
+    }
+
     public JSONObject sales(String status, String locationId, String query, int page) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("status", status);
@@ -165,5 +170,9 @@ public class PosApi {
 
     public JSONObject sale(int id) throws Exception {
         return client.request("GET", "/sales/" + id, null, true);
+    }
+
+    public JSONObject saleDocument(int id) throws Exception {
+        return client.request("GET", "/sales/" + id + "/document", null, true);
     }
 }

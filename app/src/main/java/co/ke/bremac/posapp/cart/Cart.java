@@ -15,6 +15,20 @@ public class Cart {
         public double quantity;
         public double unitPrice;
         public boolean priceEdited;
+        public boolean enableStock = true;
+        public boolean stockKnown;
+        public double availableStock;
+
+        public boolean canSetQuantity(double quantity) {
+            return Double.isFinite(quantity) && quantity > 0
+                    && (!enableStock || stockKnown && quantity <= availableStock);
+        }
+
+        public void setStock(boolean enabled, boolean known, double available) {
+            enableStock = enabled;
+            stockKnown = known && Double.isFinite(available);
+            availableStock = available;
+        }
 
         public Line(int variationId, String name, String sku, double quantity, double unitPrice) {
             this.variationId = variationId;
@@ -64,6 +78,19 @@ public class Cart {
         for (Iterator<Line> it = lines.iterator(); it.hasNext();) {
             if (it.next().variationId == variationId) it.remove();
         }
+
+    }
+
+    public String stockWarning() {
+        for (Line line : lines) {
+            if (!line.canSetQuantity(line.quantity)) {
+                return line.name + (line.enableStock && !line.stockKnown
+                        ? ": available stock is unknown. Refresh stock before checkout."
+                        : ": requested " + line.quantity + "; available " + line.availableStock
+                        + ". Reduce the quantity before checkout.");
+            }
+        }
+        return "";
     }
 
     public double subtotal(int precision) {

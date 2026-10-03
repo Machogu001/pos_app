@@ -11,6 +11,7 @@ public class PosApiLocationTest {
     private static class RecordingClient extends ApiClient {
         String path;
         JSONObject body;
+        String method;
 
         RecordingClient() {
             super("https://example.com", null);
@@ -19,10 +20,23 @@ public class PosApiLocationTest {
         @Override
         public JSONObject request(String method, String path, JSONObject body, boolean auth) {
             this.path = path;
+            this.method = method;
             this.body = body;
             assertTrue(auth);
             return new JSONObject();
         }
+    }
+
+    @Test
+    public void stockValidationDoesNotCreateSaleOrPayment() throws Exception {
+        RecordingClient client = new RecordingClient();
+        org.json.JSONArray items = new org.json.JSONArray().put(
+                new JSONObject().put("variation_id", 5).put("quantity", 3));
+        new PosApi(client).validateStock("7", items);
+        assertEquals("POST", client.method);
+        assertEquals("/sales/validate-stock", client.path);
+        assertEquals(7, client.body.getInt("location_id"));
+        assertEquals(3, client.body.getJSONArray("items").getJSONObject(0).getInt("quantity"));
     }
 
     @Test
@@ -48,6 +62,13 @@ public class PosApiLocationTest {
         assertEquals("/dashboard?location_id=7&period=today", client.path);
         api.sales("final", "7", "", 1);
         assertTrue(client.path.contains("location_id=7"));
+    }
+
+    @Test
+    public void fetchesSavedSaleDocumentWithoutPostingAnotherPayment() throws Exception {
+        RecordingClient client = new RecordingClient();
+        new PosApi(client).saleDocument(123);
+        assertEquals("/sales/123/document", client.path);
     }
 
     @Test

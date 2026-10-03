@@ -227,6 +227,10 @@ public class CheckoutActivity extends BaseActivity {
     // ---- Payments ---------------------------------------------------------------------------
 
     private void showPaymentDialog() {
+        CartStock.verify(this, this::showCheckedPaymentDialog);
+    }
+
+    private void showCheckedPaymentDialog() {
         List<PaymentMethod> methods = new ArrayList<>(session.paymentMethods);
         if (methods.isEmpty()) {
             methods.add(new PaymentMethod("cash", "Cash"));
@@ -329,6 +333,10 @@ public class CheckoutActivity extends BaseActivity {
     }
 
     private void startMpesa(String phone, double amount, String label) {
+        CartStock.verify(this, () -> startCheckedMpesa(phone, amount, label));
+    }
+
+    private void startCheckedMpesa(String phone, double amount, String label) {
         AlertDialog dialog = mpesaDialog(phone, amount);
         activeMpesaDialog = dialog;
         mpesaCancelled = false;
@@ -403,6 +411,14 @@ public class CheckoutActivity extends BaseActivity {
     // ---- Submit -----------------------------------------------------------------------------
 
     private void submitSale(String status) {
+        if ("final".equals(status)) {
+            CartStock.verify(this, () -> submitCheckedSale(status));
+        } else {
+            submitCheckedSale(status);
+        }
+    }
+
+    private void submitCheckedSale(String status) {
         lastSubmitStatus = status;
         try {
             JSONObject body = buildSaleRequest(status);
