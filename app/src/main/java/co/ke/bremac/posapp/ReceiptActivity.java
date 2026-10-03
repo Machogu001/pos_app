@@ -21,13 +21,6 @@ public class ReceiptActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setScreenTitle("Receipt");
         render();
-        if (session.lastSale != null && session.lastSale.receiptText.isEmpty()) {
-            int id = session.lastSale.id;
-            runAsync("Loading saved receipt...", () -> session.api().sale(id), result -> {
-                session.lastSale = Sale.fromJson(result.getJSONObject("data"));
-                render();
-            });
-        }
     }
 
     private void render() {
@@ -50,19 +43,14 @@ public class ReceiptActivity extends BaseActivity {
         content.addView(hero, new LinearLayout.LayoutParams(-1, -2));
 
         if (sale != null) {
-            SaleDetailActivity.addSummary(this, content, sale);
             if (!sale.receiptError.isEmpty()) {
                 content.addView(Ui.banner(this, sale.receiptError, Ui.WARNING, Ui.WARNING_SOFT),
                         Ui.params(this, -1, -2, 12));
             }
-            if (sale.receiptText != null && !sale.receiptText.isEmpty()) {
-                section("Receipt");
-                TextView receipt = Ui.text(this, sale.receiptText, 13, Ui.INK, Typeface.NORMAL);
-                receipt.setTypeface(Typeface.MONOSPACE);
-                LinearLayout card = Ui.card(this);
-                card.addView(receipt);
-                content.addView(card, Ui.params(this, -1, -2, 10));
-            }
+            section("Receipt");
+            LinearLayout receipt = Ui.column(this);
+            content.addView(receipt, Ui.params(this, -1, -2, 10));
+            WebsiteReceipt.show(this, sale.id, receipt);
         }
 
         Button newSale = Ui.primary(this, "Start a new sale");

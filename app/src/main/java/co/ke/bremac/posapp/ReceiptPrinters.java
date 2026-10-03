@@ -27,7 +27,6 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 
-import co.ke.bremac.posapp.data.Business;
 import co.ke.bremac.posapp.data.Sale;
 import co.ke.bremac.posapp.ui.Ui;
 
@@ -200,20 +199,25 @@ final class ReceiptPrinters {
             int paper = form.paperMm();
             boolean cut = form.cut.isChecked();
             form.save(prefs.edit().putString("bluetooth_address", address));
-            Business business = activity.session.business;
             dialog.dismiss();
-            activity.runAsync("Sending receipt…", () -> {
-                BluetoothAdapter adapter = adapter(activity);
-                if (adapter == null || !adapter.isEnabled()) {
-                    throw new IllegalStateException("Bluetooth is unavailable or turned off.");
-                }
-                BluetoothDevice device = adapter.getRemoteDevice(address);
-                if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    throw new IllegalStateException("Printer is no longer paired. Pair it in Android settings.");
-                }
-                ReceiptPrinterTransport.bluetooth(device, EscPosReceipt.encode(sale, business, paper, cut));
-                return new JSONObject();
-            }, result -> sent(activity));
+            WebsiteReceipt.render(activity, sale.id, paper, bitmap ->
+                    activity.runAsync("Sending receipt...", () -> {
+                        try {
+                            BluetoothAdapter adapter = adapter(activity);
+                            if (adapter == null || !adapter.isEnabled()) {
+                                throw new IllegalStateException("Bluetooth is unavailable or turned off.");
+                            }
+                            BluetoothDevice device = adapter.getRemoteDevice(address);
+                            if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+                                throw new IllegalStateException("Printer is no longer paired. Pair it in Android settings.");
+                            }
+                            ReceiptPrinterTransport.bluetooth(device, EscPosRaster.encode(
+                                    bitmap.getWidth(), bitmap.getHeight(), bitmap::getPixel, cut));
+                            return new JSONObject();
+                        } finally {
+                            bitmap.recycle();
+                        }
+                    }, result -> sent(activity)));
         }));
         dialog.show();
     }
@@ -252,13 +256,17 @@ final class ReceiptPrinters {
             int paper = form.paperMm();
             boolean cut = form.cut.isChecked();
             form.save(prefs.edit().putString("network_host", hostname).putInt("network_port", portNumber));
-            Business business = activity.session.business;
             dialog.dismiss();
-            activity.runAsync("Sending receipt…", () -> {
-                ReceiptPrinterTransport.network(hostname, portNumber,
-                        EscPosReceipt.encode(sale, business, paper, cut));
-                return new JSONObject();
-            }, result -> sent(activity));
+            WebsiteReceipt.render(activity, sale.id, paper, bitmap ->
+                    activity.runAsync("Sending receipt...", () -> {
+                        try {
+                            ReceiptPrinterTransport.network(hostname, portNumber, EscPosRaster.encode(
+                                    bitmap.getWidth(), bitmap.getHeight(), bitmap::getPixel, cut));
+                            return new JSONObject();
+                        } finally {
+                            bitmap.recycle();
+                        }
+                    }, result -> sent(activity)));
         }));
         dialog.show();
     }
@@ -273,7 +281,7 @@ final class ReceiptPrinters {
             this.activity = activity;
             box = Ui.dialogBox(activity);
             SharedPreferences prefs = settings(activity);
-            paper = Ui.spinner(activity, Arrays.asList("58 mm (32 columns)", "80 mm (48 columns)"),
+            paper = Ui.spinner(activity, Arrays.asList("58 mm (384 dots)", "80 mm (576 dots)"),
                     prefs.getInt("paper_mm", 58) == 80 ? 1 : 0);
             box.addView(Ui.field(activity, "Paper width", paper), Ui.params(activity, -1, -2, 12));
             cut = new CheckBox(activity);
@@ -282,8 +290,9 @@ final class ReceiptPrinters {
             cut.setButtonTintList(android.content.res.ColorStateList.valueOf(Ui.PRIMARY));
             cut.setChecked(prefs.getBoolean("cut", false));
             box.addView(cut, Ui.params(activity, -1, -2, 12));
-            box.addView(Ui.text(activity, "Prints saved sale details using basic ASCII text. Accented text "
-                    + "is simplified; unsupported characters become ?. Sending bytes does not confirm "
+            box.addView(Ui.text(activity, "Prints the website's configured receipt layout as a monochrome image, "
+                    + "including its branding and payment details. The printer must support ESC/POS raster images. "
+                    + "Sending bytes does not confirm "
                     + "paper printed. Check the printer before retrying a failed or timed-out send.",
                     13, Ui.MUTED, Typeface.NORMAL), Ui.params(activity, -1, -2, 12));
         }

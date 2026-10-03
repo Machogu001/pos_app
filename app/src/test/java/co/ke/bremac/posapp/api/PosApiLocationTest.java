@@ -65,6 +65,14 @@ public class PosApiLocationTest {
     }
 
     @Test
+    public void loadsWebsiteReceiptLayoutWithoutCreatingSale() throws Exception {
+        RecordingClient client = new RecordingClient();
+        new PosApi(client).saleReceipt(123);
+        assertEquals("GET", client.method);
+        assertEquals("/sales/123/receipt", client.path);
+    }
+
+    @Test
     public void fetchesSavedSaleDocumentWithoutPostingAnotherPayment() throws Exception {
         RecordingClient client = new RecordingClient();
         new PosApi(client).saleDocument(123);

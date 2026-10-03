@@ -175,4 +175,8 @@ public class PosApi {
     public JSONObject saleDocument(int id) throws Exception {
         return client.request("GET", "/sales/" + id + "/document", null, true);
     }
+
+    public JSONObject saleReceipt(int id) throws Exception {
+        return client.request("GET", "/sales/" + id + "/receipt", null, true);
+    }
 }

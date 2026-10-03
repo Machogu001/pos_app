@@ -11,7 +11,7 @@ Backend repository: [Machogu001/Pos](https://github.com/Machogu001/Pos).
 See the backend's [system mobile guide and API contract](https://github.com/Machogu001/Pos/blob/main/docs/MOBILE_API.md)
 and [installation runbook](https://github.com/Machogu001/Pos/blob/main/INSTALLATION.md).
 
-Current app version: **2.11.0** (Android version code **15**). Android **8.0
+Current app version: **2.12.0** (Android version code **16**). Android **8.0
 (API 26)** or newer and an internet connection are required. This app does not
 provide offline sales or queued offline synchronization.
 
@@ -122,13 +122,20 @@ device identity or proof of ownership.
 ## Receipts and document sharing
 
 After saving, the receipt contains the saved sale's details and payment
-references. **Open invoice** (or Open draft/Open quotation) retrieves the
+references using the website's configured receipt Blade template, not a native
+text approximation. This includes the configured logo, headings, item columns,
+taxes, payment references and footer. Direct sales use the website's direct-sale
+layout selection; other POS sales use the branch's receipt layout.
+Sales history also offers **View website receipt**.
+
+**Open invoice** (or Open draft/Open quotation) retrieves the
 server-generated PDF and opens it inside the app with page and zoom controls. **Share** attaches
 that PDF rather than sending a plain-text receipt. Sales history offers the same
 document actions for existing sales; neither action creates a payment.
 
 Deploy the backend's `GET /sales/{id}/document` endpoint before installing this
-version. It reuses the system's invoice PDF renderer and respects business,
+version. Also deploy `GET /sales/{id}/receipt` for receipt viewing/printing.
+These endpoints reuse the website's receipt and invoice PDF renderers and respect business,
 location and own-sale access. PDF rendering needs the backend's existing mPDF
 dependencies and writable `public/uploads/temp`. PDFs are cached in the app's
 private cache and shared through temporary read grants, without exposing tokens.
@@ -171,7 +178,8 @@ stock check. Use the existing payment/reference and investigate its status.
 
 Use **Print receipt** on the completed receipt, sale details or in-app document
 viewer. This prints a thermal receipt from the saved document's sale data;
-it does not send A4 PDF bytes to the printer.
+the app renders the actual configured website receipt as a raster image. It
+does not reconstruct the receipt with printer fonts or send A4 PDF bytes.
 
 Supported printers must implement **ESC/POS** using Bluetooth Classic serial
 printing (SPP), or raw network TCP printing (commonly port **9100**). BLE-only,
@@ -183,9 +191,20 @@ Bluetooth connection permission. No discovery/location permission is requested.
 For network printing, enter the printer's reachable IP/host and TCP port; the
 phone and printer normally need the same trusted local network.
 
-Select the matching 58 mm or 80 mm paper width. Printer settings are stored
-locally. ESC/POS output uses a basic ASCII-safe text receipt; it is not a
-pixel-identical copy of the website PDF and non-ASCII artwork/text may differ.
+Select the matching 58 mm (384 dots) or 80 mm (576 dots) paper width. Printer
+settings are stored locally. Printers must support ESC/POS `GS v 0` raster
+images. Layout content comes from the same website receipt template, scaled
+to the chosen printable width; thermal output is monochrome, so colors and
+resolution cannot match a color screen or A4 invoice. Fonts, logos and language
+characters are rendered by WebView rather than a printer's built-in character set.
+Missing receipt assets and receipts exceeding the safe rendering size fail
+explicitly instead of printing an incomplete or truncated receipt.
+Receipt CSS, logos and fonts must load from the configured HTTPS website
+origin or embedded data. Rendering has a 30-second deadline, a 20,000-pixel
+height limit and a 12-million-pixel memory limit; oversized layouts must use
+the invoice PDF instead. A layout wider than the selected paper/view is
+rejected rather than clipping item columns. **Reload website receipt** retries
+preview loading without creating a sale or sending another payment.
 Successful transmission means data was sent, not that paper output was
 confirmed. If a connection fails midway, check the printer before retrying to
 avoid duplicate receipts.
@@ -203,7 +222,7 @@ avoid duplicate receipts.
 | Wrong branch totals | Home/menu location filter; embedded website filters are independent |
 | Register closed | Open the required register before completing a sale |
 | Quantity exceeds stock | Reduce the branch quantity; refresh stock. Do not repeat an already confirmed payment |
-| PDF or stock check returns 404 | Deploy the v2.11.0 backend endpoints and refresh route caches |
+| PDF, website receipt or stock check returns 404 | Deploy the v2.12.0 backend endpoints and refresh route caches |
 | PDF cannot be generated | Check server mPDF dependencies, invoice configuration and writable PDF temp directory |
 | Bluetooth printer is missing | Pair it in Android settings, enable Bluetooth and allow Nearby devices access |
 | Printer times out or prints partially | Check connection, protocol, paper and printer status before retrying |
@@ -230,12 +249,13 @@ for another workstation's checkout, JDK and SDK.
 
 ## Release build and maintenance
 
-### v2.11.0 deployment order
+### v2.12.0 deployment order
 
 Deploy the backend changes from `Machogu001/Pos` first, including
 `POST /api/mobile/v1/sales/validate-stock` and
-`GET /api/mobile/v1/sales/{id}/document`, the mobile stock service and PDF
-renderer updates. Then distribute the signed v2.11.0 Android build.
+`GET /api/mobile/v1/sales/{id}/document`,
+`GET /api/mobile/v1/sales/{id}/receipt`, the mobile stock service and website
+receipt/PDF renderer updates. Then distribute the signed v2.12.0 Android build.
 An older backend cannot provide these required stock/PDF operations; the app
 does not silently bypass a failed stock check.
 
@@ -263,7 +283,7 @@ the APK signature with Android SDK `apksigner` before distribution.
 
 In the current Windows workspace, private signing material is kept outside the
 repository in `D:\Myapps\pos_app_keys`; versioned release artifacts are kept in
-its `releases` directory (for example, `BreMac360-POS-2.11.0.apk` and `.aab`).
+its `releases` directory (for example, `BreMac360-POS-2.12.0.apk` and `.aab`).
 These local files are not automatically GitHub Releases or store publications.
 Keep encrypted, access-controlled backups of the keystore and recovery
 credentials. Never commit keystores, `keystore.properties`, passwords or private

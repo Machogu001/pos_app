@@ -74,6 +74,14 @@ public class SaleDetailActivity extends BaseActivity {
                 ? "Open quotation" : "draft".equals(sale.status) ? "Open draft" : "Open invoice");
         content.addView(invoice, Ui.params(this, -1, 48, 10));
         invoice.setOnClickListener(view -> SaleDocuments.open(this, sale, false));
+        Button receipt = Ui.secondary(this, "View website receipt");
+        receipt.setOnClickListener(view -> {
+            LinearLayout preview = Ui.column(this);
+            content.addView(preview, Ui.params(this, -1, -2, 12));
+            receipt.setEnabled(false);
+            WebsiteReceipt.show(this, sale.id, preview);
+        });
+        content.addView(receipt, Ui.params(this, -1, 48, 10));
         Button print = Ui.secondary(this, "Print receipt");
         print.setOnClickListener(view -> ReceiptPrinters.show(this, sale));
         content.addView(print, Ui.params(this, -1, 48, 10));
