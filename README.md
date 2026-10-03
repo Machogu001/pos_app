@@ -177,6 +177,10 @@ save the invoice. Split payments are supported.
 
 Do not resend STK just because a receipt cannot open or the sale needs another
 stock check. Use the existing payment/reference and investigate its status.
+If completion fails with a server cache-lock permissions error, preserve the
+cart and confirmed payment. The backend's installer/setup now repairs nested
+runtime permissions; existing servers should use the standalone repair in
+the backend `INSTALLATION.md` without clearing sale idempotency records.
 
 ## Thermal receipt printing
 
