@@ -28,6 +28,27 @@ public class PosApiLocationTest {
     }
 
     @Test
+    public void posSignInAlwaysRequestsPosCreateNotHome() throws Exception {
+        RecordingClient client = new RecordingClient();
+        PosApi api = new PosApi(client);
+        api.webSession("pos", "/home");
+        assertEquals("POST", client.method);
+        assertEquals("/web-session", client.path);
+        assertEquals("pos", client.body.getString("target"));
+        assertEquals("/pos/create", client.body.getString("path"));
+        api.webSession("pos");
+        assertEquals("/pos/create", client.body.getString("path"));
+    }
+
+    @Test
+    public void businessSystemKeepsItsOwnDestination() throws Exception {
+        RecordingClient client = new RecordingClient();
+        new PosApi(client).webSession("home", "/reports/profit-loss");
+        assertEquals("home", client.body.getString("target"));
+        assertEquals("/reports/profit-loss", client.body.getString("path"));
+    }
+
+    @Test
     public void stockValidationDoesNotCreateSaleOrPayment() throws Exception {
         RecordingClient client = new RecordingClient();
         org.json.JSONArray items = new org.json.JSONArray().put(

@@ -71,6 +71,8 @@ public class WebPosActivity extends BaseActivity {
     private TextView errorMessage;
     private String serverHost;
     private boolean signingIn;
+    private boolean openingPos;
+    private boolean retriedPosDestination;
     private ValueCallback<Uri[]> pendingUpload;
     private final ActivityResultLauncher<Intent> fileChooser = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -169,7 +171,7 @@ public class WebPosActivity extends BaseActivity {
 
     /** Website page to open after signing in (null for the target's default page). */
     protected String webPath() {
-        return null;
+        return "/pos/create";
     }
 
     protected boolean allowed() {
@@ -200,7 +202,9 @@ public class WebPosActivity extends BaseActivity {
             }
         });
         if (savedInstanceState != null && webView.restoreState(savedInstanceState) != null) {
-            return;
+            if (!"pos".equals(webTarget()) || !isHomePage(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) {
+                return;
+            }
         }
         openPos();
     }
@@ -305,6 +309,8 @@ public class WebPosActivity extends BaseActivity {
             return;
         }
         signingIn = true;
+        openingPos = "pos".equals(webTarget());
+        retriedPosDestination = false;
         Ui.visible(errorPanel, false);
         String target = webTarget();
         String path = webPath();
@@ -333,6 +339,7 @@ public class WebPosActivity extends BaseActivity {
     @Override
     protected void handleError(Exception exception) {
         signingIn = false;
+        openingPos = false;
         if (exception instanceof ApiException) {
             ApiException apiException = (ApiException) exception;
             if (apiException.isUnauthenticated()) {
@@ -425,6 +432,13 @@ public class WebPosActivity extends BaseActivity {
         return path != null && (path.equals("/login") || path.startsWith("/login/"));
     }
 
+    private boolean isHomePage(Uri uri) {
+        String base = Uri.parse(session.serverUrl).getPath();
+        String path = uri.getPath();
+        String home = (base == null ? "" : base.replaceAll("/+$", "")) + "/home";
+        return home.equals(path) || (home + "/").equals(path);
+    }
+
     private final class PosWebClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -450,9 +464,24 @@ public class WebPosActivity extends BaseActivity {
                 return;
             }
             if (isLoginPage(uri)) {
+                signingIn = false;
                 // The web session ended (signed out or expired); sign in again with the app token.
                 showLoadError("Your website session ended. Tap \"Try again\" to reopen it.");
                 return;
+            }
+            if (openingPos && isHomePage(uri)) {
+                if (!retriedPosDestination) {
+                    retriedPosDestination = true;
+                    view.loadUrl(session.serverUrl.replaceAll("/+$", "") + "/pos/create");
+                } else {
+                    openingPos = false;
+                    showLoadError("The server redirected POS to Home. Check the business subscription and POS access, then tap Try again.");
+                }
+                return;
+            }
+            String path = uri.getPath();
+            if (openingPos && path != null && !path.contains("/mobile/web-login/")) {
+                openingPos = false;
             }
             view.evaluateJavascript(RECEIPT_SCRIPT, null);
             view.evaluateJavascript(GESTURE_SCRIPT, null);

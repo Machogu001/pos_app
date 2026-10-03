@@ -59,6 +59,9 @@ public class PosApi {
     /** {@code path} (e.g. "/reports/profit-loss") is the website page to open after signing in. */
     public JSONObject webSession(String target, String path) throws Exception {
         JSONObject body = new JSONObject().put("target", target);
+        if ("pos".equals(target)) {
+            path = "/pos/create";
+        }
         if (path != null && !path.isEmpty()) {
             body.put("path", path);
         }

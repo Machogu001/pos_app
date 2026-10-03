@@ -20,8 +20,8 @@ android {
         applicationId = "co.ke.bremac.posapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "2.12.2"
+        versionCode = 19
+        versionName = "2.12.3"
     }
 
     signingConfigs {

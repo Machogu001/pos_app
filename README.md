@@ -11,7 +11,7 @@ Backend repository: [Machogu001/Pos](https://github.com/Machogu001/Pos).
 See the backend's [system mobile guide and API contract](https://github.com/Machogu001/Pos/blob/main/docs/MOBILE_API.md)
 and [installation runbook](https://github.com/Machogu001/Pos/blob/main/INSTALLATION.md).
 
-Current app version: **2.12.2** (Android version code **18**). Android **8.0
+Current app version: **2.12.3** (Android version code **19**). Android **8.0
 (API 26)** or newer and an internet connection are required. This app does not
 provide offline sales or queued offline synchronization.
 
@@ -91,6 +91,13 @@ from the menu asks before clearing an unfinished quick-sale cart. Quick sale's
 The embedded website pages retain their own location filters.
 
 ## Server requirement
+
+The **POS** button requests the website's `/pos/create` through the single-use
+web sign-in flow, not `/home`. A restored Home page is not reused as the POS
+starting page. If sign-in lands on Home, the app requests `/pos/create` once;
+if the server redirects back, it shows an explicit access/subscription error
+instead of leaving Home under the POS title. Failed sign-in can be retried.
+Business-system menu destinations retain their separate navigation.
 
 Deploy the BreMac360 backend with Mobile API v1 enabled over HTTPS. Laravel
 Passport keys and a personal-access client must be configured for authenticated
