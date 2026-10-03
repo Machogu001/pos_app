@@ -203,6 +203,7 @@ public class WebPosActivity extends BaseActivity {
         });
         if (savedInstanceState != null && webView.restoreState(savedInstanceState) != null) {
             if (!"pos".equals(webTarget()) || !isHomePage(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) {
+                webView.setVisibility(View.VISIBLE);
                 return;
             }
         }
@@ -215,6 +216,7 @@ public class WebPosActivity extends BaseActivity {
         content.addView(frame, new LinearLayout.LayoutParams(-1, -1));
 
         webView = new WebView(this);
+        if ("pos".equals(webTarget())) webView.setVisibility(View.INVISIBLE);
         webView.setBackgroundColor(Ui.isDark() ? Ui.CANVAS : Color.WHITE);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -311,6 +313,7 @@ public class WebPosActivity extends BaseActivity {
         signingIn = true;
         openingPos = "pos".equals(webTarget());
         retriedPosDestination = false;
+        if (openingPos) webView.setVisibility(View.INVISIBLE);
         Ui.visible(errorPanel, false);
         String target = webTarget();
         String path = webPath();
@@ -444,6 +447,11 @@ public class WebPosActivity extends BaseActivity {
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
             if (isOwnServer(uri)) {
+                if (request.isForMainFrame() && openingPos && isHomePage(uri) && !retriedPosDestination) {
+                    retriedPosDestination = true;
+                    view.loadUrl(session.serverUrl.replaceAll("/+$", "") + "/pos/create");
+                    return true;
+                }
                 return false;
             }
             try {
@@ -483,6 +491,7 @@ public class WebPosActivity extends BaseActivity {
             if (openingPos && path != null && !path.contains("/mobile/web-login/")) {
                 openingPos = false;
             }
+            if (!openingPos) webView.setVisibility(View.VISIBLE);
             view.evaluateJavascript(RECEIPT_SCRIPT, null);
             view.evaluateJavascript(GESTURE_SCRIPT, null);
             onWebPageFinished(view, url);

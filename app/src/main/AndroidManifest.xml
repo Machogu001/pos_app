@@ -24,6 +24,10 @@
                 android:resource="@xml/document_paths" />
         </provider>
         <activity
+            android:name=".WebsiteInvoiceActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+        <activity
             android:name=".DocumentActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"

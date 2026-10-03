@@ -65,6 +65,11 @@ final class WebsiteReceipt {
                 result -> renderHtml(activity, result.getJSONObject("data").getString("html"), paperMm, success));
     }
 
+    static void showHtml(BaseActivity activity, String html, LinearLayout container) {
+        container.removeAllViews();
+        new Render(activity, container, 0, null).load(html);
+    }
+
     static void renderHtml(BaseActivity activity, String html, int paperMm, Success success) {
         int width = EscPosRaster.width(paperMm);
         FrameLayout root = activity.findViewById(android.R.id.content);

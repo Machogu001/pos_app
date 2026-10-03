@@ -11,7 +11,7 @@ Backend repository: [Machogu001/Pos](https://github.com/Machogu001/Pos).
 See the backend's [system mobile guide and API contract](https://github.com/Machogu001/Pos/blob/main/docs/MOBILE_API.md)
 and [installation runbook](https://github.com/Machogu001/Pos/blob/main/INSTALLATION.md).
 
-Current app version: **2.12.3** (Android version code **19**). Android **8.0
+Current app version: **2.12.4** (Android version code **20**). Android **8.0
 (API 26)** or newer and an internet connection are required. This app does not
 provide offline sales or queued offline synchronization.
 
@@ -93,11 +93,12 @@ The embedded website pages retain their own location filters.
 ## Server requirement
 
 The **POS** button requests the website's `/pos/create` through the single-use
-web sign-in flow, not `/home`. A restored Home page is not reused as the POS
-starting page. If sign-in lands on Home, the app requests `/pos/create` once;
-if the server redirects back, it shows an explicit access/subscription error
-instead of leaving Home under the POS title. Failed sign-in can be retried.
-Business-system menu destinations retain their separate navigation.
+web sign-in flow, not `/home`. Sign-in/intermediate pages stay hidden until
+the destination finishes loading. A Home redirect is intercepted before it
+is displayed; if the server redirects back again, the app shows an explicit
+access/subscription error. A restored Home page is not reused as the POS
+starting page. Failed sign-in can be retried. Server access restrictions
+still apply, and business-system menu destinations retain their navigation.
 
 Deploy the BreMac360 backend with Mobile API v1 enabled over HTTPS. Laravel
 Passport keys and a personal-access client must be configured for authenticated
@@ -192,15 +193,17 @@ the backend `INSTALLATION.md` without clearing sale idempotency records.
 ## Thermal receipt printing
 
 Use **Print receipt** on the completed receipt, sale details or in-app document
-viewer. This prints a thermal receipt from the saved document's sale data;
-Embedded **POS** invoice/receipt print actions also open this same
-Bluetooth/network picker. Deploy the backend update so app POS receives HTML
-even when the branch uses the website's websocket printer configuration.
-Normal website browser printing is unchanged. Embedded website colors are
-preserved rather than algorithmically darkened; native app controls still
-follow the selected theme, while invoice/receipt content stays white and readable. This prints a thermal receipt from the saved document's sale data;
-the app renders the actual configured website receipt as a raster image. It
-does not reconstruct the receipt with printer fonts or send A4 PDF bytes.
+viewer. Embedded **POS** invoice/receipt print actions open the same picker.
+It includes **View invoice in app**, **Bluetooth Classic** and **Network**.
+Embedded POS invoices open in a white HTML preview with **Print receipt**
+and **Share invoice PDF**; Quick sale uses its existing document viewer.
+
+Deploy the backend update so app POS receives HTML even when the branch uses
+the website's websocket printer configuration. Normal browser printing is
+unchanged. Embedded website colors are preserved rather than algorithmically
+darkened; native controls follow the selected theme and documents stay readable.
+Thermal printing renders the configured website receipt as a raster image,
+not reconstructed printer-font text or A4 PDF bytes.
 
 Supported printers must implement **ESC/POS** using Bluetooth Classic serial
 printing (SPP), or raw network TCP printing (commonly port **9100**). BLE-only,

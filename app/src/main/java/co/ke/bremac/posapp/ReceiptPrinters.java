@@ -53,7 +53,8 @@ final class ReceiptPrinters {
             message(activity, "Cannot print", "Load a saved sale with item details before printing.");
             return;
         }
-        show(activity, (paper, callback) -> WebsiteReceipt.render(activity, sale.id, paper, callback));
+        show(activity, (paper, callback) -> WebsiteReceipt.render(activity, sale.id, paper, callback),
+                () -> SaleDocuments.open(activity, sale, false));
     }
 
     static void showHtml(BaseActivity activity, String html) {
@@ -61,10 +62,11 @@ final class ReceiptPrinters {
             message(activity, "Cannot print", "No website receipt content was provided.");
             return;
         }
-        show(activity, (paper, callback) -> WebsiteReceipt.renderHtml(activity, html, paper, callback));
+        show(activity, (paper, callback) -> WebsiteReceipt.renderHtml(activity, html, paper, callback),
+                () -> WebsiteInvoiceActivity.open(activity, html));
     }
 
-    private static void show(BaseActivity activity, ReceiptSource source) {
+    private static void show(BaseActivity activity, ReceiptSource source, Runnable preview) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         LinearLayout box = Ui.dialogBox(activity);
         box.addView(Ui.text(activity, "ESC/POS-compatible printers only. Choose a connection. "
@@ -72,9 +74,11 @@ final class ReceiptPrinters {
                 14, Ui.MUTED, Typeface.NORMAL));
         Button bluetooth = Ui.primary(activity, "Bluetooth Classic (paired)");
         Button network = Ui.secondary(activity, "Network (IP / host and port)");
+        Button viewInvoice = Ui.secondary(activity, "View invoice in app");
+        box.addView(viewInvoice, Ui.params(activity, -1, -2, 12));
         box.addView(bluetooth, Ui.params(activity, -1, -2, 16));
         box.addView(network, Ui.params(activity, -1, -2, 8));
-        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Send receipt to printer")
+        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Invoice / receipt options")
                 .setView(box).setNegativeButton("Cancel", null).create();
         bluetooth.setOnClickListener(view -> {
             dialog.dismiss();
@@ -83,6 +87,10 @@ final class ReceiptPrinters {
         network.setOnClickListener(view -> {
             dialog.dismiss();
             network(activity, source);
+        });
+        viewInvoice.setOnClickListener(view -> {
+            dialog.dismiss();
+            preview.run();
         });
         dialog.show();
     }
