@@ -155,6 +155,18 @@ must not trigger a second payment: the confirmed payment remains in the cart.
 Resolve stock or the payment with the administrator before retrying completion.
 Pre-payment checks are not stock reservations.
 
+## Quick-sale payments
+
+Add products and select **Checkout > Add payment**. The amount defaults to the
+total due, or the remaining balance when another payment has already been added.
+Choose an enabled payment method for the selling location. For M-Pesa, enter
+the customer's phone number and tap **Add** to send an STK prompt. After server
+confirmation, the payment is added to the cart; select **Complete sale** to
+save the invoice. Split payments are supported.
+
+Do not resend STK just because a receipt cannot open or the sale needs another
+stock check. Use the existing payment/reference and investigate its status.
+
 ## Thermal receipt printing
 
 Use **Print receipt** on the completed receipt, sale details or in-app document
@@ -190,6 +202,11 @@ avoid duplicate receipts.
 | Feature or location is missing | Account permissions, permitted active locations and enabled modules |
 | Wrong branch totals | Home/menu location filter; embedded website filters are independent |
 | Register closed | Open the required register before completing a sale |
+| Quantity exceeds stock | Reduce the branch quantity; refresh stock. Do not repeat an already confirmed payment |
+| PDF or stock check returns 404 | Deploy the v2.11.0 backend endpoints and refresh route caches |
+| PDF cannot be generated | Check server mPDF dependencies, invoice configuration and writable PDF temp directory |
+| Bluetooth printer is missing | Pair it in Android settings, enable Bluetooth and allow Nearby devices access |
+| Printer times out or prints partially | Check connection, protocol, paper and printer status before retrying |
 
 Only administrators should inspect server logs. Never send passwords, OTPs,
 tokens, M-Pesa credentials or signing passwords in support messages.
@@ -212,6 +229,19 @@ These Windows paths describe the current development workspace; adjust them
 for another workstation's checkout, JDK and SDK.
 
 ## Release build and maintenance
+
+### v2.11.0 deployment order
+
+Deploy the backend changes from `Machogu001/Pos` first, including
+`POST /api/mobile/v1/sales/validate-stock` and
+`GET /api/mobile/v1/sales/{id}/document`, the mobile stock service and PDF
+renderer updates. Then distribute the signed v2.11.0 Android build.
+An older backend cannot provide these required stock/PDF operations; the app
+does not silently bypass a failed stock check.
+
+No database reset or new signing key is required for these features. Existing
+sales can be opened/shared/printed from Sales history without another payment.
+Confirm printer compatibility with the actual ESC/POS device before rollout.
 
 Signed builds need `keystore.properties` in the project root (never committed).
 Set `storeFile` to the private keystore path and configure `storePassword`,
