@@ -63,6 +63,14 @@ public class LoginActivity extends BaseActivity {
         TextView footer = Ui.text(this, "A secure HTTPS connection is required.", 12, Ui.MUTED, Typeface.NORMAL);
         footer.setGravity(Gravity.CENTER);
         content.addView(footer, Ui.params(this, -1, -2, 16));
+
+        if (!session.serverUrl.isEmpty()) {
+            TextView privacy = Ui.link(this, "Privacy Policy", Ui.PRIMARY_TEXT);
+            privacy.setGravity(Gravity.CENTER);
+            privacy.setOnClickListener(view -> openExternalUrl(
+                    session.serverUrl.replaceAll("/+$", "") + "/privacy-policy"));
+            content.addView(privacy, Ui.params(this, -1, -2, 4));
+        }
     }
 
     /** Server address step: shown on first use, or after tapping "Edit". */

@@ -1,11 +1,13 @@
 package co.ke.bremac.posapp;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.RippleDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.GestureDetector;
@@ -606,6 +608,16 @@ public abstract class BaseActivity extends AppCompatActivity {
         startActivities(new Intent[]{home, page});
         if (!(this instanceof HomeActivity)) {
             finish();
+        }
+    }
+
+    /** Opens a public website page in the user's browser. */
+    protected void openExternalUrl(String url) {
+        closeDrawerIfOpen();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (ActivityNotFoundException exception) {
+            showError("No browser is installed to open this link.");
         }
     }
 

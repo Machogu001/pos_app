@@ -223,6 +223,11 @@ public final class NavDrawer {
         appearance.setOnClickListener(view -> activity.showAppearanceDialog());
         menu.addView(appearance, rowParams());
 
+        LinearLayout privacy = row("Privacy policy", R.drawable.ic_web, Ui.MUTED, Ui.INK, false);
+        privacy.setOnClickListener(view -> activity.openExternalUrl(
+            activity.session.serverUrl.replaceAll("/+$", "") + "/privacy-policy"));
+        menu.addView(privacy, rowParams());
+
         LinearLayout signOut = row("Sign out", R.drawable.ic_logout, Ui.DANGER, Ui.DANGER, false);
         signOut.setOnClickListener(view -> activity.confirmSignOut());
         menu.addView(signOut, rowParams());
