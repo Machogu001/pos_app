@@ -19,8 +19,8 @@ android {
     defaultConfig {
         applicationId = "co.ke.bremac.posapp"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 20
+        targetSdk = 37
+        versionCode = 22
         versionName = "2.12.4"
     }
 
@@ -37,7 +37,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.findByName("release")
         }
     }
