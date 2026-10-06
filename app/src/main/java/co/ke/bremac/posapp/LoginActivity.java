@@ -164,6 +164,12 @@ public class LoginActivity extends BaseActivity {
         form.addView(Ui.field(this, "USERNAME", username), Ui.params(this, -1, -2, 18));
         form.addView(Ui.field(this, "PASSWORD", withVisibilityToggle(password)), Ui.params(this, -1, -2, 16));
 
+        TextView forgotPassword = Ui.link(this, getString(R.string.forgot_your_password), Ui.PRIMARY_TEXT);
+        forgotPassword.setGravity(Gravity.END);
+        forgotPassword.setOnClickListener(view ->
+                openExternalUrl(session.serverUrl.replaceAll("/+$", "") + "/password/reset"));
+        form.addView(forgotPassword, Ui.params(this, -1, -2, 4));
+
         Button signIn = Ui.primary(this, "Sign in");
         form.addView(signIn, Ui.params(this, -1, 52, 22));
 
