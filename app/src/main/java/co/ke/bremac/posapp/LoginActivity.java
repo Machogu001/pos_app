@@ -120,8 +120,13 @@ public class LoginActivity extends BaseActivity {
             showError(exception.getMessage());
             return;
         }
-        try {
-            String canonical = ServerDiscovery.discoverCanonicalUrl(normalized);
+        runAsync("Checking server…", () -> new JSONObject()
+                        .put("server_url", ServerDiscovery.discoverCanonicalUrl(normalized)),
+                result -> {
+            String canonical = result.optString("server_url", "");
+            if (canonical.isEmpty()) {
+                throw new IllegalArgumentException("The server did not return a canonical URL.");
+            }
             if (!canonical.equals(session.serverUrl)) {
                 // A business location from another server would not exist on the new one.
                 session.setLocationId("");
@@ -129,9 +134,7 @@ public class LoginActivity extends BaseActivity {
             session.setServerUrl(canonical);
             editingServer = false;
             render();
-        } catch (Exception exception) {
-            showError(exception.getMessage());
-        }
+        });
     }
 
     private void renderSignInForm(LinearLayout form) {
