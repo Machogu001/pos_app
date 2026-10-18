@@ -120,13 +120,18 @@ public class LoginActivity extends BaseActivity {
             showError(exception.getMessage());
             return;
         }
-        if (!normalized.equals(session.serverUrl)) {
-            // A business location from another server would not exist on the new one.
-            session.setLocationId("");
+        try {
+            String canonical = ServerDiscovery.discoverCanonicalUrl(normalized);
+            if (!canonical.equals(session.serverUrl)) {
+                // A business location from another server would not exist on the new one.
+                session.setLocationId("");
+            }
+            session.setServerUrl(canonical);
+            editingServer = false;
+            render();
+        } catch (Exception exception) {
+            showError(exception.getMessage());
         }
-        session.setServerUrl(normalized);
-        editingServer = false;
-        render();
     }
 
     private void renderSignInForm(LinearLayout form) {
