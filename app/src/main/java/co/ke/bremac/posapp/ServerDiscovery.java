@@ -1,7 +1,7 @@
 package co.ke.bremac.posapp;
 
 import co.ke.bremac.posapp.api.ApiClient;
-import co.ke.bremac.posapp.api.ApiException;
+import co.ke.bremac.posapp.api.EnvelopeParser;
 
 import org.json.JSONObject;
 
@@ -10,26 +10,25 @@ public final class ServerDiscovery {
     }
 
     public static String discoverCanonicalUrl(String enteredServer) throws Exception {
-        return discoverCanonicalUrl(new ApiClient(enteredServer, null), enteredServer);
-    }
-
-    static String discoverCanonicalUrl(ApiClient client, String enteredServer) throws Exception {
-        try {
-            return discoverCanonicalUrl(client);
-        } catch (ApiException exception) {
-            if (exception.httpStatus == 404) {
-                return ServerUrl.normalize(enteredServer);
-            }
-            throw exception;
-        }
+        return discoverCanonicalUrl(new ApiClient(enteredServer, null));
     }
 
     static String discoverCanonicalUrl(ApiClient client) throws Exception {
         JSONObject response = client.request("GET", "/discover", null, false);
-        if (response == null || !response.has("server_url")) {
+        JSONObject data = response == null ? null : response.optJSONObject("data");
+        if (data == null) {
+            Object payload = response == null ? null : EnvelopeParser.data(response);
+            if (payload instanceof JSONObject) {
+                data = (JSONObject) payload;
+            }
+        }
+        if (data == null && response != null && response.has("server_url")) {
+            data = response;
+        }
+        if (data == null || !data.has("server_url")) {
             throw new IllegalArgumentException("The server did not return a canonical URL.");
         }
-        return ServerUrl.normalize(response.getString("server_url"));
+        return ServerUrl.normalize(data.getString("server_url"));
     }
 }
 

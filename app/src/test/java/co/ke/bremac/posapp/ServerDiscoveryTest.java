@@ -40,7 +40,9 @@ public class ServerDiscoveryTest {
 
     @Test
     public void normalizesCanonicalUrlFromDiscoveryResponse() throws Exception {
-        JSONObject response = new JSONObject().put("server_url", "https://POS.example.com/retail/");
+        JSONObject response = new JSONObject()
+                .put("success", true)
+                .put("data", new JSONObject().put("server_url", "https://POS.example.com/retail/"));
         String canonical = ServerDiscovery.discoverCanonicalUrl(new StubClient(response));
         assertEquals("https://pos.example.com/retail", canonical);
     }
@@ -50,9 +52,8 @@ public class ServerDiscoveryTest {
         ServerDiscovery.discoverCanonicalUrl(new StubClient(new JSONObject()));
     }
 
-    @Test
-    public void fallsBackToNormalizedServerWhenDiscoverReturns404() throws Exception {
-        String canonical = ServerDiscovery.discoverCanonicalUrl(new MissingDiscoverClient(), "https://POS.example.com/retail/");
-        assertEquals("https://pos.example.com/retail", canonical);
+    @Test(expected = ApiException.class)
+    public void rejectsServerWhenDiscoverReturns404() throws Exception {
+        ServerDiscovery.discoverCanonicalUrl(new MissingDiscoverClient());
     }
 }
