@@ -70,8 +70,7 @@ public class ReceiptActivity extends BaseActivity {
         share.setEnabled(sale != null);
         invoice.setEnabled(sale != null);
         share.setOnClickListener(view -> SaleDocuments.open(this, sale, true));
-        invoice.setOnClickListener(view -> WebsiteInvoiceActivity.openSale(this, sale.id,
-            ReceiptPrinters.preferredPaperMm(this)));
+        invoice.setOnClickListener(view -> WebsiteInvoiceActivity.openSale(this, sale.id));
         Button print = Ui.secondary(this, "Print receipt");
         print.setEnabled(sale != null);
         print.setOnClickListener(view -> ReceiptPrinters.show(this, sale));

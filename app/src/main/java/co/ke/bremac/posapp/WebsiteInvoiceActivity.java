@@ -18,8 +18,8 @@ public class WebsiteInvoiceActivity extends BaseActivity {
     private String html;
     private int saleId;
 
-    static void openSale(BaseActivity activity, int saleId, int paperMm) {
-        activity.runAsync("Opening invoice...", () -> activity.session.api().saleReceipt(saleId, paperMm),
+    static void openSale(BaseActivity activity, int saleId) {
+        activity.runAsync("Opening invoice...", () -> activity.session.api().saleReceipt(saleId),
                 result -> open(activity, result.getJSONObject("data").getString("html"), saleId));
     }
 
@@ -77,7 +77,7 @@ public class WebsiteInvoiceActivity extends BaseActivity {
         print.setOnClickListener(view -> {
             if (saleId > 0) {
                 ReceiptPrinters.showHtml(this, html,
-                        () -> openSale(this, saleId, ReceiptPrinters.preferredPaperMm(this)));
+                        () -> openSale(this, saleId));
             } else {
                 ReceiptPrinters.showHtml(this, html);
             }

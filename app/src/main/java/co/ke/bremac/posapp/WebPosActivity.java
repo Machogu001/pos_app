@@ -548,8 +548,7 @@ public class WebPosActivity extends BaseActivity {
                 if (saleId > 0) {
                     final int resolvedSaleId = saleId;
                     ReceiptPrinters.showHtml(WebPosActivity.this, html,
-                        () -> WebsiteInvoiceActivity.openSale(WebPosActivity.this, resolvedSaleId,
-                            ReceiptPrinters.preferredPaperMm(WebPosActivity.this)));
+                        () -> WebsiteInvoiceActivity.openSale(WebPosActivity.this, resolvedSaleId));
                     return;
                 }
                 ReceiptPrinters.showHtml(WebPosActivity.this, html);
