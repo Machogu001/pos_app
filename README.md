@@ -136,16 +136,16 @@ taxes, payment references and footer. Direct sales use the website's direct-sale
 layout selection; other POS sales use the branch's receipt layout.
 Sales history also offers **View website receipt**.
 
-**Open invoice**, **Share document** and **Print receipt** all use that same
-configured website layout. The app exports the rendered HTML at 80 mm width to
-a color, image-based PDF for opening/sharing, preserving its logo, fonts,
-columns and footer rather than switching to the website's separate downloadable
-PDF template. The PDF is one receipt-sized page, without A4 page breaks.
-It opens inside the app with zoom controls. **Share** attaches
-that PDF rather than sending a plain-text receipt. Sales history offers the same
-document actions for existing sales; neither action creates a payment.
+**Open invoice** and **Share document** use the server's PDF document endpoint,
+so the app shows and shares the same invoice PDF the website generates. It opens
+inside the app with zoom controls. **Print receipt** keeps using the configured
+website receipt layout rendered at the selected thermal paper width (58 mm or
+80 mm) so branding, columns, payment references and footer stay arranged for an
+ESC/POS receipt printer. Sales history offers the same document actions for
+existing sales; neither action creates a payment.
 
-Deploy `GET /sales/{id}/receipt` for all three document actions.
+Deploy `GET /sales/{id}/document` for invoice open/share and
+`GET /sales/{id}/receipt` for thermal receipt preview/printing.
 This endpoint reuses the website's configured receipt renderer and respects business,
 location and own-sale access. `/sales/{id}/document` remains available for older
 clients needing the website's separate mPDF download, but v2.12.1 no longer uses

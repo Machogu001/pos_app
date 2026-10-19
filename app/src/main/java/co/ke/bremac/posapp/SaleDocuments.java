@@ -19,36 +19,32 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import co.ke.bremac.posapp.data.Sale;
+import co.ke.bremac.posapp.data.SaleDocument;
 
 final class SaleDocuments {
     private SaleDocuments() {
     }
 
     static void open(BaseActivity activity, Sale sale, boolean share) {
-        WebsiteReceipt.render(activity, sale.id, 80, bitmap ->
-                activity.runAsync("Preparing website document...", () -> {
-                    try {
-                        File directory = new File(activity.getCacheDir(), "sale_documents");
-                        if (!directory.isDirectory() && !directory.mkdirs()) {
-                            throw new IOException("Cannot create the document folder.");
-                        }
-                        String label = "quotation".equals(sale.status) ? "QUOTATION"
-                                : "draft".equals(sale.status) ? "DRAFT" : "INVOICE";
-                        String filename = label + "-" + sale.invoiceNo.replaceAll("[^A-Za-z0-9._-]", "_") + ".pdf";
-                        File file = new File(directory, sale.id + "-website-" + filename);
-                        writeReceiptPdf(bitmap, file);
-                        return new JSONObject().put("file", file.getAbsolutePath());
-                    } finally {
-                        bitmap.recycle();
-                    }
-                }, result -> {
-                    File file = new File(result.getString("file"));
-                    if (share) {
-                        shareFile(activity, file, sale.invoiceNo);
-                    } else {
-                        DocumentActivity.open(activity, file, sale);
-                    }
-                }));
+        activity.runAsync("Preparing invoice document...", () -> {
+            SaleDocument document = new SaleDocument(activity.session.api().saleDocument(sale.id).getJSONObject("data"));
+            File directory = new File(activity.getCacheDir(), "sale_documents");
+            if (!directory.isDirectory() && !directory.mkdirs()) {
+                throw new IOException("Cannot create the document folder.");
+            }
+            File file = new File(directory, sale.id + "-server-" + document.filename);
+            try (FileOutputStream output = new FileOutputStream(file)) {
+                output.write(document.bytes);
+            }
+            return new JSONObject().put("file", file.getAbsolutePath());
+        }, result -> {
+            File file = new File(result.getString("file"));
+            if (share) {
+                shareFile(activity, file, sale.invoiceNo);
+            } else {
+                DocumentActivity.open(activity, file, sale);
+            }
+        });
     }
 
     static void writeReceiptPdf(Bitmap bitmap, File file) throws IOException {
