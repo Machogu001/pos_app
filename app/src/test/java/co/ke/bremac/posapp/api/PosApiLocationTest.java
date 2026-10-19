@@ -88,9 +88,9 @@ public class PosApiLocationTest {
     @Test
     public void loadsWebsiteReceiptLayoutWithoutCreatingSale() throws Exception {
         RecordingClient client = new RecordingClient();
-        new PosApi(client).saleReceipt(123);
+        new PosApi(client).saleReceipt(123, 58);
         assertEquals("GET", client.method);
-        assertEquals("/sales/123/receipt", client.path);
+        assertEquals("/sales/123/receipt?paper_mm=58", client.path);
     }
 
     @Test
