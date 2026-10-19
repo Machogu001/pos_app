@@ -44,6 +44,7 @@ import co.ke.bremac.posapp.ui.Ui;
 public class WebPosActivity extends BaseActivity {
     private static final String PRINT_BRIDGE = "BreMacPrint";
     private static final String GESTURE_BRIDGE = "BreMacGestures";
+    private static final String SALE_PRINT_PATH = "/sells/";
     /**
      * Reports, for the element being touched, whether it scrolls sideways (e.g. a wide table, so a
      * sideways swipe scrolls it instead of navigating) and whether its scroll area is scrolled down
@@ -73,6 +74,8 @@ public class WebPosActivity extends BaseActivity {
     private boolean signingIn;
     private boolean openingPos;
     private boolean retriedPosDestination;
+    private int lastPrintedSaleId;
+    private String lastPrintedInvoiceNo = "";
     private ValueCallback<Uri[]> pendingUpload;
     private final ActivityResultLauncher<Intent> fileChooser = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -99,9 +102,15 @@ public class WebPosActivity extends BaseActivity {
             + "var style=document.createElement('style');style.textContent="
             + "'#invoice_content,#receipt_section,.receipt-wrap{background:#fff!important;color:#000!important;"
             + "color-scheme:light!important}';document.head.appendChild(style);"
+            + "window.__bremacLastPrintHref='';"
+            + "document.addEventListener('click',function(e){var link=e.target&&e.target.closest?e.target.closest('a.print-invoice,[data-href]'):null;"
+            + "if(!link)return;var href=link.getAttribute('data-href')||link.getAttribute('href')||'';"
+            + "if(href.indexOf('/print')!==-1)window.__bremacLastPrintHref=href;},true);"
             + "function send(node){if(!node){alert('Open an invoice or receipt before printing.');return;}"
             + "var css=Array.from(document.querySelectorAll('link[rel=stylesheet],style'))"
             + ".map(function(n){return n.outerHTML;}).join('');"
+            + "var match=(window.__bremacLastPrintHref||'').match(/\/sells\/(\d+)\/print/);"
+            + "var saleId=match&&match[1]?match[1]:'';"
             + "var html='<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">'"
             + "+'<meta http-equiv=\"Content-Security-Policy\" content=\"default-src &#39;none&#39;;"
             + " style-src &#39;self&#39; &#39;unsafe-inline&#39;; img-src &#39;self&#39; data:;"
@@ -110,7 +119,7 @@ public class WebPosActivity extends BaseActivity {
             + "#receipt_section,.print_section{display:block!important;visibility:visible!important;"
             + "position:static!important;width:100%!important}</style>'"
             + "+'</head><body>'+node.outerHTML+'</body></html>';"
-            + PRINT_BRIDGE + ".receipt(html);}"
+            + PRINT_BRIDGE + ".receipt(html,saleId,document.title||'');}"
             + "window.__print_receipt=function(id){send(document.getElementById(id));};"
             + "window.print=function(){send(document.getElementById('invoice_content')"
             + "||document.getElementById('receipt_section'));};"
@@ -520,10 +529,27 @@ public class WebPosActivity extends BaseActivity {
 
     private final class PrintBridge {
         @JavascriptInterface
-        public void receipt(String html) {
+        public void receipt(String html, String saleIdText, String invoiceNo) {
             runOnUiThreadSafe(() -> {
                 String current = webView.getUrl();
                 if (current == null || !isOwnServer(Uri.parse(current))) {
+                    return;
+                }
+                int saleId = 0;
+                if (saleIdText != null) {
+                    try {
+                        saleId = Integer.parseInt(saleIdText.trim());
+                    } catch (NumberFormatException ignored) {
+                        saleId = 0;
+                    }
+                }
+                lastPrintedSaleId = saleId;
+                lastPrintedInvoiceNo = invoiceNo == null ? "" : invoiceNo.trim();
+                if (saleId > 0) {
+                    final int resolvedSaleId = saleId;
+                    final String resolvedInvoiceNo = lastPrintedInvoiceNo;
+                    ReceiptPrinters.showHtml(WebPosActivity.this, html,
+                            () -> SaleDocuments.open(WebPosActivity.this, resolvedSaleId, resolvedInvoiceNo, false));
                     return;
                 }
                 ReceiptPrinters.showHtml(WebPosActivity.this, html);

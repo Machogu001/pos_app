@@ -36,9 +36,13 @@ public class DocumentActivity extends BaseActivity {
     private Bitmap renderedPage;
 
     static void open(BaseActivity activity, File file, Sale sale) {
+        open(activity, file, sale.id, sale.invoiceNo);
+    }
+
+    static void open(BaseActivity activity, File file, int saleId, String invoiceNo) {
         activity.startActivity(new Intent(activity, DocumentActivity.class)
-                .putExtra("file", file.getAbsolutePath()).putExtra("sale_id", sale.id)
-                .putExtra("invoice_no", sale.invoiceNo));
+                .putExtra("file", file.getAbsolutePath()).putExtra("sale_id", saleId)
+                .putExtra("invoice_no", invoiceNo));
     }
 
     @Override

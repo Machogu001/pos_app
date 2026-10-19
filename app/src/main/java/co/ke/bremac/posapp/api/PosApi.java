@@ -182,4 +182,10 @@ public class PosApi {
     public JSONObject saleReceipt(int id) throws Exception {
         return client.request("GET", "/sales/" + id + "/receipt", null, true);
     }
+
+    public JSONObject saleReceipt(int id, int paperMm) throws Exception {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("paper_mm", String.valueOf(paperMm));
+        return client.request("GET", "/sales/" + id + "/receipt" + ApiClient.q(params), null, true);
+    }
 }

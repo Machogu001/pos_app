@@ -51,7 +51,8 @@ final class WebsiteReceipt {
         TextView loading = Ui.text(activity, "The website receipt will appear here.", 13, Ui.MUTED,
                 android.graphics.Typeface.NORMAL);
         preview.addView(loading);
-        activity.runAsync("Loading website receipt...", () -> activity.session.api().saleReceipt(saleId), result -> {
+        int paperMm = ReceiptPrinters.preferredPaperMm(activity);
+        activity.runAsync("Loading website receipt...", () -> activity.session.api().saleReceipt(saleId, paperMm), result -> {
             if (container.getTag() != request || !container.isAttachedToWindow()) return;
             String html = result.getJSONObject("data").getString("html");
             preview.removeAllViews();
@@ -61,7 +62,7 @@ final class WebsiteReceipt {
     }
 
     static void render(BaseActivity activity, int saleId, int paperMm, Success success) {
-        activity.runAsync("Loading website receipt...", () -> activity.session.api().saleReceipt(saleId),
+        activity.runAsync("Loading website receipt...", () -> activity.session.api().saleReceipt(saleId, paperMm),
                 result -> renderHtml(activity, result.getJSONObject("data").getString("html"), paperMm, success));
     }
 

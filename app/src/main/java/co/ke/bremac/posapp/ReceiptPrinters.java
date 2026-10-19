@@ -66,6 +66,15 @@ final class ReceiptPrinters {
                 () -> WebsiteInvoiceActivity.open(activity, html));
     }
 
+    static void showHtml(BaseActivity activity, String html, Runnable preview) {
+        if (html == null || html.trim().isEmpty()) {
+            message(activity, "Cannot print", "No website receipt content was provided.");
+            return;
+        }
+        show(activity, (paper, callback) -> WebsiteReceipt.renderHtml(activity, html, paper, callback),
+                preview != null ? preview : () -> WebsiteInvoiceActivity.open(activity, html));
+    }
+
     private static void show(BaseActivity activity, ReceiptSource source, Runnable preview) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         LinearLayout box = Ui.dialogBox(activity);
@@ -97,6 +106,10 @@ final class ReceiptPrinters {
 
     private static SharedPreferences settings(BaseActivity activity) {
         return activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    static int preferredPaperMm(BaseActivity activity) {
+        return settings(activity).getInt("paper_mm", 58) == 80 ? 80 : 58;
     }
 
     private static void withBluetoothPermission(BaseActivity activity, Runnable granted) {

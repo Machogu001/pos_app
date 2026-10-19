@@ -26,13 +26,17 @@ final class SaleDocuments {
     }
 
     static void open(BaseActivity activity, Sale sale, boolean share) {
+        open(activity, sale.id, sale.invoiceNo, share);
+    }
+
+    static void open(BaseActivity activity, int saleId, String invoiceNo, boolean share) {
         activity.runAsync("Preparing invoice document...", () -> {
-            SaleDocument document = new SaleDocument(activity.session.api().saleDocument(sale.id).getJSONObject("data"));
+            SaleDocument document = new SaleDocument(activity.session.api().saleDocument(saleId).getJSONObject("data"));
             File directory = new File(activity.getCacheDir(), "sale_documents");
             if (!directory.isDirectory() && !directory.mkdirs()) {
                 throw new IOException("Cannot create the document folder.");
             }
-            File file = new File(directory, sale.id + "-server-" + document.filename);
+            File file = new File(directory, saleId + "-server-" + document.filename);
             try (FileOutputStream output = new FileOutputStream(file)) {
                 output.write(document.bytes);
             }
@@ -40,9 +44,9 @@ final class SaleDocuments {
         }, result -> {
             File file = new File(result.getString("file"));
             if (share) {
-                shareFile(activity, file, sale.invoiceNo);
+                shareFile(activity, file, invoiceNo);
             } else {
-                DocumentActivity.open(activity, file, sale);
+                DocumentActivity.open(activity, file, saleId, invoiceNo);
             }
         });
     }
