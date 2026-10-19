@@ -109,7 +109,7 @@ public class WebPosActivity extends BaseActivity {
             + "function send(node){if(!node){alert('Open an invoice or receipt before printing.');return;}"
             + "var css=Array.from(document.querySelectorAll('link[rel=stylesheet],style'))"
             + ".map(function(n){return n.outerHTML;}).join('');"
-            + "var match=(window.__bremacLastPrintHref||'').match(/\/sells\/(\d+)\/print/);"
+            + "var match=(window.__bremacLastPrintHref||'').match(/\\/sells\\/(\\d+)\\/print/);"
             + "var saleId=match&&match[1]?match[1]:'';"
             + "var html='<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">'"
             + "+'<meta http-equiv=\"Content-Security-Policy\" content=\"default-src &#39;none&#39;;"

@@ -73,7 +73,8 @@ public class SaleDetailActivity extends BaseActivity {
         Button invoice = Ui.secondary(this, "quotation".equals(sale.status)
                 ? "Open quotation" : "draft".equals(sale.status) ? "Open draft" : "Open invoice");
         content.addView(invoice, Ui.params(this, -1, 48, 10));
-        invoice.setOnClickListener(view -> SaleDocuments.open(this, sale, false));
+        invoice.setOnClickListener(view -> WebsiteInvoiceActivity.openSale(this, sale.id,
+                ReceiptPrinters.preferredPaperMm(this)));
         Button receipt = Ui.secondary(this, "View website receipt");
         receipt.setOnClickListener(view -> {
             LinearLayout preview = Ui.column(this);

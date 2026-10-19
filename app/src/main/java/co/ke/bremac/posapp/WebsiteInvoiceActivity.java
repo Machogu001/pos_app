@@ -17,6 +17,11 @@ import co.ke.bremac.posapp.ui.Ui;
 public class WebsiteInvoiceActivity extends BaseActivity {
     private String html;
 
+    static void openSale(BaseActivity activity, int saleId, int paperMm) {
+        activity.runAsync("Opening invoice...", () -> activity.session.api().saleReceipt(saleId, paperMm),
+                result -> open(activity, result.getJSONObject("data").getString("html")));
+    }
+
     static void open(BaseActivity activity, String html) {
         activity.runAsync("Opening invoice...", () -> {
             File folder = new File(activity.getCacheDir(), "sale_documents");
