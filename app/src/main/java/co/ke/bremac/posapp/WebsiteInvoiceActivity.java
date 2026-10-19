@@ -16,13 +16,18 @@ import co.ke.bremac.posapp.ui.Ui;
 
 public class WebsiteInvoiceActivity extends BaseActivity {
     private String html;
+    private int saleId;
 
     static void openSale(BaseActivity activity, int saleId, int paperMm) {
         activity.runAsync("Opening invoice...", () -> activity.session.api().saleReceipt(saleId, paperMm),
-                result -> open(activity, result.getJSONObject("data").getString("html")));
+                result -> open(activity, result.getJSONObject("data").getString("html"), saleId));
     }
 
     static void open(BaseActivity activity, String html) {
+        open(activity, html, 0);
+    }
+
+    static void open(BaseActivity activity, String html, int saleId) {
         activity.runAsync("Opening invoice...", () -> {
             File folder = new File(activity.getCacheDir(), "sale_documents");
             if (!folder.isDirectory() && !folder.mkdirs()) {
@@ -30,9 +35,11 @@ public class WebsiteInvoiceActivity extends BaseActivity {
             }
             File file = File.createTempFile("website-invoice-", ".html", folder);
             Files.write(file.toPath(), html.getBytes(StandardCharsets.UTF_8));
-            return new JSONObject().put("file", file.getAbsolutePath());
+            return new JSONObject().put("file", file.getAbsolutePath())
+                    .put("sale_id", saleId);
         }, result -> activity.startActivity(new Intent(activity, WebsiteInvoiceActivity.class)
-                .putExtra("file", result.getString("file"))));
+                .putExtra("file", result.getString("file"))
+                .putExtra("sale_id", result.optInt("sale_id", 0))));
     }
 
     @Override
@@ -44,6 +51,7 @@ public class WebsiteInvoiceActivity extends BaseActivity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         setScreenTitle("Website invoice");
+        saleId = getIntent().getIntExtra("sale_id", 0);
         try {
             String path = getIntent().getStringExtra("file");
             if (path == null) throw new IOException("No invoice was provided.");
@@ -66,7 +74,14 @@ public class WebsiteInvoiceActivity extends BaseActivity {
         bottomBar().addView(print, new LinearLayout.LayoutParams(-1, -2));
         bottomBar().addView(share, Ui.params(this, -1, 48, 8));
         showBottomBar(true);
-        print.setOnClickListener(view -> ReceiptPrinters.showHtml(this, html));
+        print.setOnClickListener(view -> {
+            if (saleId > 0) {
+                ReceiptPrinters.showHtml(this, html,
+                        () -> openSale(this, saleId, ReceiptPrinters.preferredPaperMm(this)));
+            } else {
+                ReceiptPrinters.showHtml(this, html);
+            }
+        });
         share.setOnClickListener(view -> WebsiteReceipt.renderHtml(this, html, 80, bitmap ->
                 runAsync("Preparing invoice PDF...", () -> {
                     try {

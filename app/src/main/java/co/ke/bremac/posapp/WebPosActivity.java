@@ -547,9 +547,9 @@ public class WebPosActivity extends BaseActivity {
                 lastPrintedInvoiceNo = invoiceNo == null ? "" : invoiceNo.trim();
                 if (saleId > 0) {
                     final int resolvedSaleId = saleId;
-                    final String resolvedInvoiceNo = lastPrintedInvoiceNo;
                     ReceiptPrinters.showHtml(WebPosActivity.this, html,
-                            () -> SaleDocuments.open(WebPosActivity.this, resolvedSaleId, resolvedInvoiceNo, false));
+                        () -> WebsiteInvoiceActivity.openSale(WebPosActivity.this, resolvedSaleId,
+                            ReceiptPrinters.preferredPaperMm(WebPosActivity.this)));
                     return;
                 }
                 ReceiptPrinters.showHtml(WebPosActivity.this, html);
