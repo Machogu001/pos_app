@@ -54,7 +54,7 @@ final class ReceiptPrinters {
             return;
         }
         show(activity, (paper, callback) -> WebsiteReceipt.render(activity, sale.id, paper, callback),
-                () -> WebsiteInvoiceActivity.openSale(activity, sale.id, preferredPaperMm(activity)));
+                () -> WebsiteInvoiceActivity.openSale(activity, sale.id));
     }
 
     static void showHtml(BaseActivity activity, String html) {
