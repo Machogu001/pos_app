@@ -1,5 +1,41 @@
 import java.util.Properties
 
+fun isReleasePackagingBuild(): Boolean {
+    return gradle.startParameter.taskNames.any { task ->
+        val normalized = task.lowercase()
+        ("assemble" in normalized || "bundle" in normalized) && "release" in normalized
+    }
+}
+
+fun resolveVersionCode(): Int {
+    val versionFile = rootProject.file("version.properties")
+    if (!versionFile.exists()) {
+        versionFile.writeText("POS_APP_VERSION_CODE=1\n")
+    }
+
+    val content = versionFile.readText()
+    val regex = Regex("""POS_APP_VERSION_CODE\s*=\s*(\d+)""")
+    val match = regex.find(content)
+        ?: error("POS_APP_VERSION_CODE entry not found in ${versionFile.path}")
+
+    val current = match.groupValues[1].toInt()
+    if (!isReleasePackagingBuild()) {
+        return current
+    }
+
+    val next = current + 1
+    val updated = content.replaceFirst(regex, "POS_APP_VERSION_CODE=$next")
+
+    if (updated != content) {
+        versionFile.writeText(updated)
+        println("versionCode bumped for release build: $current -> $next")
+    }
+
+    return next
+}
+
+val resolvedVersionCode = resolveVersionCode()
+
 plugins {
     id("com.android.application")
 }
@@ -20,7 +56,7 @@ android {
         applicationId = "co.ke.bremac.posapp"
         minSdk = 26
         targetSdk = 37
-        versionCode = 34
+        versionCode = resolvedVersionCode
         versionName = "2.12.5"
     }
 
@@ -66,4 +102,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth-api-phone:18.2.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
-    }
+}
+
+
