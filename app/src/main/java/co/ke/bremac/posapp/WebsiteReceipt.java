@@ -92,7 +92,9 @@ final class WebsiteReceipt {
                 + "var ready=document.readyState==='complete'&&css&&fonts&&images.every(function(i){return i.complete;});"
                 + "var h=Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight,"
                 + "document.documentElement.scrollHeight));"
-                + "var w=Math.ceil(Math.max(document.body.scrollWidth,document.documentElement.scrollWidth));"
+                + "var descendants=Array.from(document.querySelectorAll('*'));"
+                + "var overflow=descendants.reduce(function(max,e){return Math.max(max,e.scrollWidth);},0);"
+                + "var w=Math.ceil(Math.max(document.body.scrollWidth,document.documentElement.scrollWidth,overflow));"
                 + "return JSON.stringify({ready:ready,broken:broken,height:h,width:w});})()";
 
         private final BaseActivity activity;
@@ -108,6 +110,7 @@ final class WebsiteReceipt {
         private volatile String assetError;
         private boolean closed;
         private boolean ready;
+        private boolean fitAttempted;
         private int lastHeight;
         private int stable;
 
@@ -132,7 +135,9 @@ final class WebsiteReceipt {
             settings.setAllowContentAccess(false);
             settings.setDomStorageEnabled(false);
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-            settings.setSupportZoom(false);
+            settings.setSupportZoom(rasterWidth == 0);
+            settings.setBuiltInZoomControls(rasterWidth == 0);
+            settings.setDisplayZoomControls(false);
             settings.setTextZoom(100);
             if (rasterWidth > 0) web.setInitialScale(100);
             if (Build.VERSION.SDK_INT >= 33) {
@@ -265,6 +270,20 @@ final class WebsiteReceipt {
                     int pixels = Math.max(1, (int) Math.ceil(height * scale));
                     int width = rasterWidth > 0 ? rasterWidth : web.getWidth();
                     if (result.getInt("width") * scale > width + 4) {
+                        if (rasterWidth > 0 && !fitAttempted) {
+                            fitAttempted = true;
+                            double fitScale = (width - 8.0) / (result.getInt("width") * scale);
+                            if (fitScale > 0.0 && fitScale < 1.0) {
+                                web.evaluateJavascript("document.documentElement.style.zoom='"
+                                        + fitScale + "'", ignored -> {
+                                            if (closed) return;
+                                            stable = 0;
+                                            lastHeight = -1;
+                                            handler.postDelayed(measure, 150);
+                                        });
+                                return;
+                            }
+                        }
                         fail("The configured website receipt is wider than this view. Use 80 mm paper or adjust the website receipt layout.");
                         return;
                     }
