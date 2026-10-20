@@ -278,8 +278,8 @@ final class WebsiteReceipt {
                     float scale = web.getScale();
                     int pixels = Math.max(1, (int) Math.ceil(height * scale));
                     int width = rasterWidth > 0 ? rasterWidth : web.getWidth();
-                    if (result.getInt("width") * scale > width + 4) {
-                        if (rasterWidth > 0 && !fitAttempted) {
+                    if (rasterWidth > 0 && result.getInt("width") * scale > width + 4) {
+                        if (!fitAttempted) {
                             fitAttempted = true;
                             double fitScale = (width - 8.0) / (result.getInt("width") * scale);
                             if (fitScale > 0.0 && fitScale < 1.0) {
