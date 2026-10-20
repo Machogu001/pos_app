@@ -32,6 +32,8 @@ import java.io.ByteArrayInputStream;
 import co.ke.bremac.posapp.ui.Ui;
 
 final class WebsiteReceipt {
+    private static final int INVOICE_PDF_WIDTH = 794;
+
     interface Success {
         void accept(Bitmap bitmap);
     }
@@ -71,7 +73,14 @@ final class WebsiteReceipt {
     }
 
     static void renderHtml(BaseActivity activity, String html, int paperMm, Success success) {
-        int width = EscPosRaster.width(paperMm);
+        renderAtWidth(activity, html, EscPosRaster.width(paperMm), success);
+    }
+
+    static void renderInvoicePdf(BaseActivity activity, String html, Success success) {
+        renderAtWidth(activity, html, INVOICE_PDF_WIDTH, success);
+    }
+
+    private static void renderAtWidth(BaseActivity activity, String html, int width, Success success) {
         FrameLayout root = activity.findViewById(android.R.id.content);
         FrameLayout holder = new FrameLayout(activity);
         holder.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);

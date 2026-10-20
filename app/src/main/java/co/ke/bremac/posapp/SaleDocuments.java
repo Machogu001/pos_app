@@ -52,18 +52,27 @@ final class SaleDocuments {
     }
 
     static void writeReceiptPdf(Bitmap bitmap, File file) throws IOException {
-        // A single receipt-sized page preserves the website layout without cutting rows at A4 page breaks.
-        int width = 227; // 80 mm in PDF points.
-        int height = Math.max(1, (int) Math.ceil(bitmap.getHeight() * (double) width / bitmap.getWidth()));
+        int pageWidth = 595;
+        int pageHeight = 842;
+        double scale = pageWidth / (double) bitmap.getWidth();
+        int sourcePageHeight = Math.max(1, (int) Math.floor(pageHeight / scale));
+        int pageCount = Math.max(1, (int) Math.ceil(bitmap.getHeight() / (double) sourcePageHeight));
         PdfDocument pdf = new PdfDocument();
         try {
-            PdfDocument.Page page = pdf.startPage(new PdfDocument.PageInfo.Builder(width, height, 1).create());
-            try {
-                Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-                page.getCanvas().drawBitmap(bitmap, new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight()),
-                        new RectF(0, 0, width, height), paint);
-            } finally {
-                pdf.finishPage(page);
+            Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            for (int pageNumber = 0; pageNumber < pageCount; pageNumber++) {
+                int sourceTop = pageNumber * sourcePageHeight;
+                int sourceBottom = Math.min(bitmap.getHeight(), sourceTop + sourcePageHeight);
+                float destinationHeight = (sourceBottom - sourceTop) * (float) scale;
+                PdfDocument.Page page = pdf.startPage(new PdfDocument.PageInfo.Builder(
+                        pageWidth, pageHeight, pageNumber + 1).create());
+                try {
+                    page.getCanvas().drawBitmap(bitmap,
+                            new Rect(0, sourceTop, bitmap.getWidth(), sourceBottom),
+                            new RectF(0, 0, pageWidth, destinationHeight), paint);
+                } finally {
+                    pdf.finishPage(page);
+                }
             }
             try (FileOutputStream output = new FileOutputStream(file)) {
                 pdf.writeTo(output);

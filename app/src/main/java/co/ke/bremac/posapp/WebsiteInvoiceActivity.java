@@ -82,16 +82,29 @@ public class WebsiteInvoiceActivity extends BaseActivity {
                 ReceiptPrinters.showHtml(this, html);
             }
         });
-        share.setOnClickListener(view -> WebsiteReceipt.renderHtml(this, html, 80, bitmap ->
-                runAsync("Preparing invoice PDF...", () -> {
+        share.setOnClickListener(view -> shareInvoiceHtml(this, html, "Website invoice"));
+    }
+
+    static void shareSale(BaseActivity activity, int saleId, String invoiceNo) {
+        activity.runAsync("Preparing invoice...", () -> activity.session.api().saleReceipt(saleId),
+                result -> shareInvoiceHtml(activity, result.getJSONObject("data").getString("html"), invoiceNo));
+    }
+
+    private static void shareInvoiceHtml(BaseActivity activity, String html, String invoiceNo) {
+        WebsiteReceipt.renderInvoicePdf(activity, html, bitmap ->
+                activity.runAsync("Preparing invoice PDF...", () -> {
                     try {
-                        File file = File.createTempFile("INVOICE-", ".pdf",
-                                new File(getCacheDir(), "sale_documents"));
+                        File directory = new File(activity.getCacheDir(), "sale_documents");
+                        if (!directory.isDirectory() && !directory.mkdirs()) {
+                            throw new IOException("Cannot create the document folder.");
+                        }
+                        File file = File.createTempFile("INVOICE-", ".pdf", directory);
                         SaleDocuments.writeReceiptPdf(bitmap, file);
                         return new JSONObject().put("file", file.getAbsolutePath());
                     } finally {
                         bitmap.recycle();
                     }
-                }, result -> SaleDocuments.shareFile(this, new File(result.getString("file")), "Website invoice"))));
+                }, result -> SaleDocuments.shareFile(activity,
+                        new File(result.getString("file")), invoiceNo)));
     }
 }

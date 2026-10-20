@@ -69,7 +69,7 @@ public class SaleDetailActivity extends BaseActivity {
 
         Button share = Ui.primary(this, "Share document");
         content.addView(share, Ui.params(this, -1, 52, 20));
-        share.setOnClickListener(view -> SaleDocuments.open(this, sale, true));
+        share.setOnClickListener(view -> WebsiteInvoiceActivity.shareSale(this, sale.id, sale.invoiceNo));
         Button invoice = Ui.secondary(this, "quotation".equals(sale.status)
                 ? "Open quotation" : "draft".equals(sale.status) ? "Open draft" : "Open invoice");
         content.addView(invoice, Ui.params(this, -1, 48, 10));
