@@ -22,14 +22,19 @@ import org.json.JSONObject;
 import java.util.List;
 
 public class ProductsActivity extends BaseActivity {
+    private static final String[] SORTS = {"product_name", "qty_available"};
+    private static final String[] SORT_LABELS = {"Name", "Qty available"};
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
     private EditText search;
+    private LinearLayout sortTabs;
     private LinearLayout list;
     private Button more;
     private int page = 1;
     private int lastPage = 1;
     private String query = "";
+    private String sortBy = SORTS[0];
 
     @Override
     protected NavDrawer.Item navItem() {
@@ -50,6 +55,9 @@ public class ProductsActivity extends BaseActivity {
                 Ui.tinted(this, R.drawable.ic_search, Ui.MUTED), null, null, null);
         search.setCompoundDrawablePadding(Ui.dp(this, 10));
         content.addView(search, new LinearLayout.LayoutParams(-1, -2));
+        sortTabs = Ui.column(this);
+        content.addView(sortTabs, Ui.params(this, -1, -2, 10));
+        renderSortTabs();
         list = Ui.column(this);
         content.addView(list, Ui.params(this, -1, -2, 4));
         more = Ui.secondary(this, "Load more");
@@ -92,11 +100,12 @@ public class ProductsActivity extends BaseActivity {
             lastPage = 1;
         }
         String requestedQuery = query;
+        String requestedSort = sortBy;
         int requestedPage = page;
         runAsync(reset && list.getChildCount() == 0 ? "Loading products…" : "",
-                () -> session.api().products(requestedQuery, session.locationId, null, requestedPage),
+                () -> session.api().products(requestedQuery, session.locationId, null, requestedSort, requestedPage),
                 result -> {
-                    if (!requestedQuery.equals(query)) {
+                    if (!requestedQuery.equals(query) || !requestedSort.equals(sortBy)) {
                         return;
                     }
                     if (requestedPage == 1) {
@@ -116,6 +125,25 @@ public class ProductsActivity extends BaseActivity {
                     page = requestedPage + 1;
                     Ui.visible(more, page <= lastPage);
                 });
+    }
+
+    private void renderSortTabs() {
+        sortTabs.removeAllViews();
+        int selected = 0;
+        for (int i = 0; i < SORTS.length; i++) {
+            if (SORTS[i].equals(sortBy)) {
+                selected = i;
+            }
+        }
+        sortTabs.addView(Ui.segmented(this, SORT_LABELS, selected, index -> {
+            String next = SORTS[index];
+            if (next.equals(sortBy)) {
+                return;
+            }
+            sortBy = next;
+            renderSortTabs();
+            load(true);
+        }));
     }
 
     private LinearLayout productRow(Product product) {

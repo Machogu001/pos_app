@@ -83,11 +83,18 @@ public class PosApi {
     }
 
     public JSONObject products(String query, String locationId, Integer contactId, int page) throws Exception {
+        return products(query, locationId, contactId, null, page);
+    }
+
+    public JSONObject products(String query, String locationId, Integer contactId, String sortBy, int page) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("q", query);
         params.put("location_id", locationId);
         if (contactId != null) {
             params.put("contact_id", String.valueOf(contactId));
+        }
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            params.put("sort_by", sortBy);
         }
         params.put("page", String.valueOf(page));
         params.put("per_page", "20");

@@ -168,9 +168,9 @@ public class HomeActivity extends BaseActivity {
         hero.addView(Ui.text(this, session.business.name, 13, Ui.withAlpha(Color.WHITE, 0.8f), Typeface.NORMAL),
                 Ui.params(this, -2, -2, 8));
         if (session.permissions.sellCreate) {
-            Button openPos = Ui.button(this, "Open POS", Color.WHITE, Ui.PRIMARY_DARK, 0);
-            openPos.setOnClickListener(view -> startActivity(new Intent(this, WebPosActivity.class)));
-            hero.addView(openPos, Ui.params(this, -1, 50, 16));
+            Button quickSale = Ui.button(this, "Quick Sale", Color.WHITE, Ui.PRIMARY_DARK, 0);
+            quickSale.setOnClickListener(view -> startActivity(new Intent(this, PosActivity.class)));
+            hero.addView(quickSale, Ui.params(this, -1, 50, 16));
         }
         content.addView(hero, new LinearLayout.LayoutParams(-1, -2));
     }
@@ -340,9 +340,11 @@ public class HomeActivity extends BaseActivity {
 
         List<View> tiles = new ArrayList<>();
         tiles.add(Ui.statTile(this, "TOTAL SALES", money("total_sales"), Ui.PRIMARY));
+        tiles.add(Ui.statTile(this, "TOTAL PURCHASE", money("total_purchase"), Ui.WARNING));
         tiles.add(Ui.statTile(this, "TRANSACTIONS", count("sales_count"), Ui.INFO));
         tiles.add(Ui.statTile(this, "PAID", money("total_paid"), Ui.SUCCESS));
         tiles.add(Ui.statTile(this, "DUE", money("total_due"), Ui.DANGER));
+        tiles.add(Ui.statTile(this, "PURCHASE DUE", money("purchase_due"), Ui.DANGER));
         tiles.add(Ui.statTile(this, "EXPENSES", money("total_expense"), Ui.WARNING));
         tiles.add(Ui.statTile(this, "NET", money("net"), Ui.PRIMARY_TEXT));
         content.addView(Ui.grid(this, tiles, 2), Ui.params(this, -1, -2, 12));
